@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0f766e">
+    <title>PRODAPT Invoice Studio</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Invoice Studio</p>
+          <h1>PRODAPT</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="printDocument" title="Export PDF" aria-label="Export PDF">
+            <span aria-hidden="true">PDF</span>
+          </button>
+          <button class="icon-button" id="shareDocument" title="Share" aria-label="Share">
+            <span aria-hidden="true">Share</span>
+          </button>
+        </div>
+      </header>
+
+      <main>
+        <nav class="tabbar" aria-label="Main navigation">
+          <button class="tab active" data-view="dashboard">Dashboard</button>
+          <button class="tab" data-view="builder">Create</button>
+          <button class="tab" data-view="customers">Customers</button>
+          <button class="tab" data-view="items">Items</button>
+          <button class="tab" data-view="settings">Settings</button>
+        </nav>
+
+        <section class="view active" id="dashboardView">
+          <div class="metrics-grid">
+            <article class="metric">
+              <span>Total sales</span>
+              <strong id="metricSales">$0.00</strong>
+            </article>
+            <article class="metric">
+              <span>Profit</span>
+              <strong id="metricProfit">$0.00</strong>
+            </article>
+            <article class="metric">
+              <span>Invoices</span>
+              <strong id="metricInvoices">0</strong>
+            </article>
+            <article class="metric">
+              <span>Quotations</span>
+              <strong id="metricQuotes">0</strong>
+            </article>
+          </div>
+
+          <div class="section-heading">
+            <h2>Documents</h2>
+            <button class="secondary-button" id="newDocumentFromDashboard">New</button>
+          </div>
+          <div class="document-list" id="documentList"></div>
+        </section>
+
+        <section class="view" id="builderView">
+          <div class="builder-grid">
+            <form class="panel" id="documentForm">
+              <div class="form-row split">
+                <label>
+                  Type
+                  <select id="docType">
+                    <option value="quote">Quotation</option>
+                    <option value="invoice">Invoice</option>
+                  </select>
+                </label>
+                <label>
+                  Date
+                  <input type="date" id="docDate">
+                </label>
+              </div>
+
+              <div class="form-row">
+                <label>
+                  Customer
+                  <select id="docCustomer"></select>
+                </label>
+              </div>
+
+              <div class="section-heading compact">
+                <h2>Products and services</h2>
+                <button type="button" class="secondary-button" id="addLine">Add line</button>
+              </div>
+              <div class="line-items" id="lineItems"></div>
+
+              <div class="form-row split">
+                <label>
+                  Discount
+                  <input type="number" min="0" step="0.01" id="docDiscount" value="0">
+                </label>
+                <label>
+                  Discount type
+                  <select id="docDiscountType">
+                    <option value="percent">Percent</option>
+                    <option value="amount">Amount</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="form-row split">
+                <label>
+                  Tax %
+                  <input type="number" min="0" step="0.01" id="docTax" value="15">
+                </label>
+                <label>
+                  Status
+                  <select id="docStatus">
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="form-row">
+                <label>
+                  Notes
+                  <textarea id="docNotes" rows="3" placeholder="Payment terms, delivery details, or banking notes"></textarea>
+                </label>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="primary-button">Save document</button>
+                <button type="button" class="secondary-button" id="convertToInvoice">Convert</button>
+                <button type="button" class="danger-button" id="clearDocument">Clear</button>
+              </div>
+            </form>
+
+            <aside class="panel totals-panel">
+              <h2>Totals</h2>
+              <dl class="totals-list">
+                <div><dt>Subtotal</dt><dd id="totalSubtotal">$0.00</dd></div>
+                <div><dt>Discount</dt><dd id="totalDiscount">$0.00</dd></div>
+                <div><dt>Tax</dt><dd id="totalTax">$0.00</dd></div>
+                <div class="grand-total"><dt>Total</dt><dd id="totalGrand">$0.00</dd></div>
+                <div class="profit-total"><dt>Private profit</dt><dd id="totalProfit">$0.00</dd></div>
+              </dl>
+              <div class="share-stack">
+                <button type="button" class="primary-button" id="previewPrint">Export PDF</button>
+                <button type="button" class="secondary-button" id="emailDocument">Email</button>
+                <button type="button" class="secondary-button" id="whatsappDocument">WhatsApp</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" id="customersView">
+          <div class="editor-layout">
+            <form class="panel" id="customerForm">
+              <h2>Add customer</h2>
+              <label>Name<input id="customerName" required></label>
+              <label>Company<input id="customerCompany"></label>
+              <label>Phone<input id="customerPhone" type="tel"></label>
+              <label>Email<input id="customerEmail" type="email"></label>
+              <label>Address<textarea id="customerAddress" rows="3"></textarea></label>
+              <button class="primary-button" type="submit">Save customer</button>
+            </form>
+            <div class="panel">
+              <h2>Customer list</h2>
+              <div class="record-list" id="customerList"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="itemsView">
+          <div class="editor-layout">
+            <form class="panel" id="itemForm">
+              <h2>Add product or service</h2>
+              <label>Name<input id="itemName" required></label>
+              <label>Description<textarea id="itemDescription" rows="3"></textarea></label>
+              <div class="form-row split">
+                <label>Selling price<input id="itemPrice" type="number" min="0" step="0.01" required></label>
+                <label>Cost price<input id="itemCost" type="number" min="0" step="0.01" required></label>
+              </div>
+              <label>Category
+                <select id="itemCategory">
+                  <option value="Product">Product</option>
+                  <option value="Service">Service</option>
+                </select>
+              </label>
+              <button class="primary-button" type="submit">Save item</button>
+            </form>
+            <div class="panel">
+              <h2>Item list</h2>
+              <div class="record-list" id="itemList"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="settingsView">
+          <form class="panel settings-form" id="settingsForm">
+            <h2>Business details</h2>
+            <div class="logo-field">
+              <label>Company logo
+                <input id="businessLogo" type="file" accept="image/*">
+              </label>
+              <button class="secondary-button" type="button" id="removeLogo">Remove logo</button>
+              <div class="logo-preview" id="logoPreview">No logo selected</div>
+            </div>
+            <label>Business name<input id="businessName" required></label>
+            <label>Address<textarea id="businessAddress" rows="3" required></textarea></label>
+            <div class="form-row split">
+              <label>Phone<input id="businessPhone" type="tel"></label>
+              <label>Email<input id="businessEmail" type="email"></label>
+            </div>
+            <div class="form-row split">
+              <label>Currency<input id="businessCurrency" maxlength="4"></label>
+              <label>Default tax %<input id="businessTax" type="number" min="0" step="0.01"></label>
+            </div>
+            <label>Payment details<textarea id="businessPayment" rows="3"></textarea></label>
+            <button class="primary-button" type="submit">Save settings</button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <section class="print-page" id="printPage" aria-hidden="true"></section>
+
+    <script src="app.js"></script>
+  </body>
+</html>

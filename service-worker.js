@@ -1,4 +1,4 @@
-const cacheName = "prodapt-invoice-studio-v3";
+const cacheName = "prodapt-invoice-studio-v4";
 const files = [
   "./",
   "./index.html",

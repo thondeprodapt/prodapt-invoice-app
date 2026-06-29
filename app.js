@@ -97,6 +97,81 @@ function formatMoney(value) {
   return `${state.settings.businessCurrency || "$"}${moneyValue(value).toFixed(2)}`;
 }
 
+function normalizeHeader(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let value = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (char === '"' && inQuotes && next === '"') {
+      value += '"';
+      index += 1;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      row.push(value.trim());
+      value = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(value.trim());
+      if (row.some((cell) => cell !== "")) rows.push(row);
+      row = [];
+      value = "";
+    } else {
+      value += char;
+    }
+  }
+
+  row.push(value.trim());
+  if (row.some((cell) => cell !== "")) rows.push(row);
+  return rows;
+}
+
+function firstMatchingValue(record, names) {
+  for (const name of names) {
+    if (record[name] !== undefined && record[name] !== "") return record[name];
+  }
+  return "";
+}
+
+function importItemsFromCsv(text) {
+  const rows = parseCsv(text);
+  if (rows.length < 2) return 0;
+
+  const headers = rows[0].map(normalizeHeader);
+  const imported = rows.slice(1).map((row) => {
+    const record = {};
+    headers.forEach((header, index) => {
+      record[header] = row[index] || "";
+    });
+    const fallbackName = row[0] || "";
+    const fallbackDescription = row[1] || "";
+    const fallbackPrice = row[2] || 0;
+    const fallbackCost = row[3] || 0;
+
+    return {
+      id: uid(),
+      name: firstMatchingValue(record, ["name", "item", "itemname", "product", "productname", "servicename"]) || fallbackName,
+      description: firstMatchingValue(record, ["description", "details", "notes", "salesdescription"]) || fallbackDescription,
+      price: moneyValue(firstMatchingValue(record, ["price", "rate", "unitprice", "sellingprice", "salesprice", "amount"]) || fallbackPrice),
+      cost: moneyValue(firstMatchingValue(record, ["cost", "costprice", "purchaseprice", "expense"]) || fallbackCost)
+    };
+  }).filter((item) => item.name);
+
+  state.items.push(...imported);
+  saveState();
+  renderAll();
+  return imported.length;
+}
+
 function getCustomer(id) {
   return state.customers.find((customer) => customer.id === id) || state.customers[0] || null;
 }
@@ -619,6 +694,18 @@ document.querySelector("#itemList").addEventListener("click", (event) => {
   draft.lines = draft.lines.map((line) => line.itemId === id ? { itemId: state.items[0]?.id || "", quantity: 1, price: state.items[0]?.price || 0 } : line);
   saveState();
   renderAll();
+});
+
+document.querySelector("#itemImport").addEventListener("change", (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    const count = importItemsFromCsv(String(reader.result || ""));
+    event.target.value = "";
+    alert(count ? `Imported ${count} items.` : "No items were imported. Check the CSV file.");
+  });
+  reader.readAsText(file);
 });
 
 document.querySelector("#settingsForm").addEventListener("submit", (event) => {

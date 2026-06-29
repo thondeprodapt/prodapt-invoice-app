@@ -362,6 +362,10 @@ textarea:focus {
   margin-bottom: 12px;
 }
 
+.import-field {
+  margin-bottom: 14px;
+}
+
 .logo-field {
   display: grid;
   grid-template-columns: 1fr auto;

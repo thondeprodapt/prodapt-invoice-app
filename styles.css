@@ -186,6 +186,13 @@ h2 {
   margin: 0;
 }
 
+.item-count {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .section-heading.compact {
   margin-top: 10px;
 }

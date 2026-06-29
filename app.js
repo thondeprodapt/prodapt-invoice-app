@@ -75,7 +75,7 @@ function itemIdentity(item) {
 
 function applyWaveItemsMigration() {
   const waveItems = Array.isArray(window.PRODAPT_WAVE_ITEMS) ? window.PRODAPT_WAVE_ITEMS : [];
-  if (!waveItems.length || state.migrations?.waveItems20260629) return;
+  if (!waveItems.length) return;
 
   const existing = new Set(state.items.map(itemIdentity));
   const imported = waveItems
@@ -88,7 +88,9 @@ function applyWaveItemsMigration() {
       cost: moneyValue(item.cost)
     }));
 
-  state.items.push(...imported);
+  if (imported.length) {
+    state.items.push(...imported);
+  }
   state.migrations = { ...(state.migrations || {}), waveItems20260629: true };
   saveState();
 }
@@ -367,6 +369,10 @@ function renderCustomers() {
 
 function renderItems() {
   const list = document.querySelector("#itemList");
+  const count = document.querySelector("#itemCount");
+  if (count) {
+    count.textContent = `${state.items.length} items loaded`;
+  }
   list.innerHTML = state.items.map((item) => `
     <article class="record-card">
       <div class="card-row">

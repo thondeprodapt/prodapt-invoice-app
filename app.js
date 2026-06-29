@@ -26,27 +26,14 @@ const starterData = {
       address: "Customer address"
     }
   ],
-  items: [
-    {
-      id: uid(),
-      name: "Consulting Service",
-      description: "Professional service",
-      price: 150,
-      cost: 75
-    },
-    {
-      id: uid(),
-      name: "Product Supply",
-      description: "Product item",
-      price: 95,
-      cost: 55
-    }
-  ],
+  items: [],
   documents: [],
-  currentDocumentId: null
+  currentDocumentId: null,
+  migrations: {}
 };
 
 let state = loadState();
+applyWaveItemsMigration();
 let draft = emptyDocument();
 
 function loadState() {
@@ -69,12 +56,41 @@ function normalizeState(saved) {
     },
     customers: Array.isArray(saved.customers) ? saved.customers : [],
     items: Array.isArray(saved.items) ? saved.items : [],
-    documents: Array.isArray(saved.documents) ? saved.documents : []
+    documents: Array.isArray(saved.documents) ? saved.documents : [],
+    migrations: saved.migrations || {}
   };
 }
 
 function saveState() {
   localStorage.setItem(storageKey, JSON.stringify(state));
+}
+
+function itemIdentity(item) {
+  return [
+    String(item.name || "").trim().toLowerCase(),
+    String(item.description || "").trim().toLowerCase(),
+    moneyValue(item.price).toFixed(2)
+  ].join("|");
+}
+
+function applyWaveItemsMigration() {
+  const waveItems = Array.isArray(window.PRODAPT_WAVE_ITEMS) ? window.PRODAPT_WAVE_ITEMS : [];
+  if (!waveItems.length || state.migrations?.waveItems20260629) return;
+
+  const existing = new Set(state.items.map(itemIdentity));
+  const imported = waveItems
+    .filter((item) => item.name && !existing.has(itemIdentity(item)))
+    .map((item) => ({
+      id: uid(),
+      name: item.name,
+      description: item.description || "",
+      price: moneyValue(item.price),
+      cost: moneyValue(item.cost)
+    }));
+
+  state.items.push(...imported);
+  state.migrations = { ...(state.migrations || {}), waveItems20260629: true };
+  saveState();
 }
 
 function emptyDocument(type = "quote") {

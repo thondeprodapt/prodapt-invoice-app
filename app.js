@@ -32,16 +32,14 @@ const starterData = {
       name: "Consulting Service",
       description: "Professional service",
       price: 150,
-      cost: 75,
-      category: "Service"
+      cost: 75
     },
     {
       id: uid(),
       name: "Product Supply",
       description: "Product item",
       price: 95,
-      cost: 55,
-      category: "Product"
+      cost: 55
     }
   ],
   documents: [],
@@ -107,6 +105,11 @@ function getItem(id) {
   return state.items.find((item) => item.id === id) || null;
 }
 
+function itemOptionLabel(item) {
+  if (!item) return "Item";
+  return item.description ? `${item.name} - ${item.description}` : item.name;
+}
+
 function nextDocumentNumber(type) {
   const prefix = type === "invoice" ? "INV" : "QT";
   const year = new Date().getFullYear();
@@ -163,15 +166,19 @@ function fillSelects() {
 function renderLineItems() {
   const lineItems = document.querySelector("#lineItems");
   lineItems.innerHTML = draft.lines.map((line, index) => {
+    const selectedItem = getItem(line.itemId);
     const itemOptions = state.items.map((item) => {
       const selected = item.id === line.itemId ? "selected" : "";
-      return `<option value="${item.id}" ${selected}>${escapeHtml(item.name)}</option>`;
+      return `<option value="${item.id}" ${selected}>${escapeHtml(itemOptionLabel(item))}</option>`;
     }).join("");
     return `
       <div class="line-card" data-index="${index}">
-        <label>Item
-          <select class="line-item">${itemOptions}</select>
-        </label>
+        <div class="line-item-field">
+          <label>Item
+            <select class="line-item">${itemOptions}</select>
+          </label>
+          <p class="line-description">${escapeHtml(selectedItem?.description || "No description saved for this item")}</p>
+        </div>
         <label>Qty
           <input class="line-qty" type="number" min="0" step="0.01" value="${line.quantity}">
         </label>
@@ -274,7 +281,7 @@ function renderItems() {
       <div class="card-row">
         <div>
           <div class="card-title">${escapeHtml(item.name)}</div>
-          <div class="card-meta">${escapeHtml(item.category)} · Cost ${formatMoney(item.cost)}</div>
+          <div class="card-meta">Cost ${formatMoney(item.cost)}</div>
         </div>
         <strong>${formatMoney(item.price)}</strong>
       </div>
@@ -283,7 +290,7 @@ function renderItems() {
         <button class="danger-button delete-item" data-id="${item.id}">Delete</button>
       </div>
     </article>
-  `).join("") || `<div class="empty-state">No products or services yet</div>`;
+  `).join("") || `<div class="empty-state">No items yet</div>`;
 }
 
 function renderSettings() {
@@ -598,8 +605,7 @@ document.querySelector("#itemForm").addEventListener("submit", (event) => {
     name: document.querySelector("#itemName").value,
     description: document.querySelector("#itemDescription").value,
     price: moneyValue(document.querySelector("#itemPrice").value),
-    cost: moneyValue(document.querySelector("#itemCost").value),
-    category: document.querySelector("#itemCategory").value
+    cost: moneyValue(document.querySelector("#itemCost").value)
   });
   event.target.reset();
   saveState();

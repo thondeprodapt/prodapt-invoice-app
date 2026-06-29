@@ -251,13 +251,26 @@ textarea:focus {
 
 .line-card {
   display: grid;
-  grid-template-columns: minmax(150px, 1.4fr) 80px 104px 44px;
+  grid-template-columns: minmax(170px, 1.4fr) 80px 104px 44px;
   gap: 8px;
   align-items: end;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fbfcfd;
+}
+
+.line-item-field {
+  display: grid;
+  gap: 6px;
+}
+
+.line-description {
+  margin: 0;
+  min-height: 20px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
 }
 
 .remove-line {
@@ -542,7 +555,7 @@ textarea:focus {
     grid-template-columns: 1fr 1fr;
   }
 
-  .line-card label:first-child {
+  .line-item-field {
     grid-column: 1 / -1;
   }
 

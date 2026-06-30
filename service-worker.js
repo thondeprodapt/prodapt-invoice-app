@@ -1,10 +1,12 @@
-const cacheName = "prodapt-invoice-studio-v6";
+const cacheName = "prodapt-invoice-studio-v7";
 const files = [
   "./",
   "./index.html",
+  "./items-csv.html",
   "./styles.css",
   "./app.js",
   "./wave-items.js",
+  "./wave-products-import.csv",
   "./manifest.json",
   "./icon.svg"
 ];

@@ -73,26 +73,61 @@ function itemIdentity(item) {
   ].join("|");
 }
 
+function itemCatalogKey(item) {
+  return [
+    String(item.name || "").trim().toLowerCase(),
+    String(item.description || "").trim().toLowerCase()
+  ].join("|");
+}
+
 function applyWaveItemsMigration() {
   const waveItems = Array.isArray(window.PRODAPT_WAVE_ITEMS) ? window.PRODAPT_WAVE_ITEMS : [];
   if (!waveItems.length) return;
 
   const existing = new Set(state.items.map(itemIdentity));
-  const imported = waveItems
-    .filter((item) => item.name && !existing.has(itemIdentity(item)))
-    .map((item) => ({
+  const existingByCatalogKey = new Map();
+  state.items.forEach((item) => {
+    const key = itemCatalogKey(item);
+    if (key !== "|" && !existingByCatalogKey.has(key)) {
+      existingByCatalogKey.set(key, item);
+    }
+  });
+
+  let changed = false;
+  const imported = [];
+  waveItems.forEach((item) => {
+    if (!item.name) return;
+
+    const price = moneyValue(item.price);
+    const cost = moneyValue(item.cost);
+    const catalogKey = itemCatalogKey(item);
+    const savedItem = existingByCatalogKey.get(catalogKey);
+    if (savedItem && (moneyValue(savedItem.price) !== price || moneyValue(savedItem.cost) !== cost)) {
+      savedItem.price = price;
+      savedItem.cost = cost;
+      changed = true;
+    }
+    if (savedItem) return;
+
+    if (existing.has(itemIdentity(item))) return;
+    imported.push({
       id: uid(),
       name: item.name,
       description: item.description || "",
-      price: moneyValue(item.price),
-      cost: moneyValue(item.cost)
-    }));
+      price,
+      cost
+    });
+  });
 
   if (imported.length) {
     state.items.push(...imported);
+    changed = true;
   }
   state.migrations = { ...(state.migrations || {}), waveItems20260629: true };
-  saveState();
+  if (changed || !state.migrations.waveItemsWithPrices20260630) {
+    state.migrations.waveItemsWithPrices20260630 = true;
+    saveState();
+  }
 }
 
 function emptyDocument(type = "quote") {

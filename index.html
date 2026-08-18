@@ -30,7 +30,7 @@
           <button class="tab active" data-view="dashboard">Dashboard</button>
           <button class="tab" data-view="builder">Create</button>
           <button class="tab" data-view="customers">Customers</button>
-          <button class="tab" data-view="items">Items</button>
+          <button class="tab" data-view="items">Products</button>
           <button class="tab" data-view="settings">Settings</button>
         </nav>
 
@@ -70,6 +70,7 @@
                   <select id="docType">
                     <option value="quote">Quotation</option>
                     <option value="invoice">Invoice</option>
+                    <option value="receipt">Receipt</option>
                   </select>
                 </label>
                 <label>
@@ -86,7 +87,7 @@
               </div>
 
               <div class="section-heading compact">
-                <h2>Items</h2>
+                <h2>Products</h2>
                 <button type="button" class="secondary-button" id="addLine">Add line</button>
               </div>
               <div class="line-items" id="lineItems"></div>
@@ -174,25 +175,25 @@
         <section class="view" id="itemsView">
           <div class="editor-layout">
             <form class="panel" id="itemForm">
-              <h2>Add item</h2>
+              <h2>Add product</h2>
               <label>Name<input id="itemName" required></label>
               <label>Description<textarea id="itemDescription" rows="3"></textarea></label>
               <div class="form-row split">
                 <label>Selling price<input id="itemPrice" type="number" min="0" step="0.01" required></label>
                 <label>Cost price<input id="itemCost" type="number" min="0" step="0.01" required></label>
               </div>
-              <button class="primary-button" type="submit">Save item</button>
+              <button class="primary-button" type="submit">Save product</button>
             </form>
             <div class="panel">
               <div class="section-heading compact">
-                <h2>Item list</h2>
-                <span class="item-count" id="itemCount">0 items loaded</span>
+                <h2>Product list</h2>
+                <span class="item-count" id="itemCount">0 products loaded</span>
               </div>
               <div class="csv-actions">
-                <a class="secondary-link" href="items-csv.html" target="_blank" rel="noopener">View CSV list</a>
-                <a class="secondary-link" href="wave-products-import.csv" download>Download CSV</a>
+                <a class="secondary-link" href="items-csv.html" target="_blank" rel="noopener">View CSV product list</a>
+                <a class="secondary-link" href="wave-products-import.csv" download>Download product CSV</a>
               </div>
-              <label class="import-field">Import items from CSV
+              <label class="import-field">Import products from CSV
                 <input id="itemImport" type="file" accept=".csv,text/csv">
               </label>
               <div class="record-list" id="itemList"></div>
@@ -229,7 +230,7 @@
 
     <section class="print-page" id="printPage" aria-hidden="true"></section>
 
-    <script src="wave-items.js?v=20260630-prices"></script>
-    <script src="app.js?v=20260630-prices"></script>
+    <script src="wave-items.js?v=20260818-domain"></script>
+    <script src="app.js?v=20260818-domain"></script>
   </body>
 </html>

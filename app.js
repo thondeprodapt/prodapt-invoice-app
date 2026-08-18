@@ -150,6 +150,24 @@ function formatMoney(value) {
   return `${state.settings.businessCurrency || "$"}${moneyValue(value).toFixed(2)}`;
 }
 
+function documentLabel(type) {
+  const labels = {
+    invoice: "Invoice",
+    quote: "Quotation",
+    receipt: "Receipt"
+  };
+  return labels[type] || "Document";
+}
+
+function documentPrefix(type) {
+  const prefixes = {
+    invoice: "INV",
+    quote: "QT",
+    receipt: "RCT"
+  };
+  return prefixes[type] || "DOC";
+}
+
 function normalizeHeader(value) {
   return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
@@ -239,7 +257,7 @@ function itemOptionLabel(item) {
 }
 
 function nextDocumentNumber(type) {
-  const prefix = type === "invoice" ? "INV" : "QT";
+  const prefix = documentPrefix(type);
   const year = new Date().getFullYear();
   const count = state.documents.filter((document) => document.type === type).length + 1;
   return `${prefix}-${year}-${String(count).padStart(4, "0")}`;
@@ -364,7 +382,7 @@ function renderDashboard() {
   list.innerHTML = [...state.documents].reverse().map((document) => {
     const customer = getCustomer(document.customerId);
     const totals = calculate(document);
-    const label = document.type === "invoice" ? "Invoice" : "Quotation";
+    const label = documentLabel(document.type);
     return `
       <article class="document-card">
         <div class="card-row">
@@ -406,7 +424,7 @@ function renderItems() {
   const list = document.querySelector("#itemList");
   const count = document.querySelector("#itemCount");
   if (count) {
-    count.textContent = `${state.items.length} items loaded`;
+    count.textContent = `${state.items.length} products loaded`;
   }
   list.innerHTML = state.items.map((item) => `
     <article class="record-card">
@@ -514,7 +532,7 @@ function deleteDocument(id) {
 function renderPrintPage(documentData) {
   const totals = calculate(documentData);
   const customer = getCustomer(documentData.customerId);
-  const label = documentData.type === "invoice" ? "Invoice" : "Quotation";
+  const label = documentLabel(documentData.type);
   const logo = state.settings.logoData
     ? `<img class="invoice-logo" src="${state.settings.logoData}" alt="${escapeHtml(state.settings.businessName || "Company")} logo">`
     : "";
@@ -585,6 +603,8 @@ function renderPrintPage(documentData) {
         <strong>Notes</strong>
         <p>${escapeHtml(documentData.notes || state.settings.businessPayment || "")}</p>
       </section>
+
+      <footer class="document-powered-by">Powered by PRODAPT SOLUTION</footer>
     </div>
   `;
 }
@@ -593,7 +613,7 @@ function documentSummary() {
   updateDraftFromForm();
   const totals = calculate(draft);
   const customer = getCustomer(draft.customerId);
-  const label = draft.type === "invoice" ? "Invoice" : "Quotation";
+  const label = documentLabel(draft.type);
   return `${label} ${draft.number || "Draft"} for ${customer?.name || "customer"}: ${formatMoney(totals.total)}`;
 }
 
@@ -609,7 +629,7 @@ async function shareCurrentDocument() {
 
 function emailCurrentDocument() {
   const customer = getCustomer(draft.customerId);
-  const subject = encodeURIComponent(`PRODAPT ${draft.type === "invoice" ? "Invoice" : "Quotation"} ${draft.number || "Draft"}`);
+  const subject = encodeURIComponent(`PRODAPT ${documentLabel(draft.type)} ${draft.number || "Draft"}`);
   const body = encodeURIComponent(`${documentSummary()}\n\nRegards,\n${state.settings.businessName}`);
   window.location.href = `mailto:${encodeURIComponent(customer?.email || "")}?subject=${subject}&body=${body}`;
 }

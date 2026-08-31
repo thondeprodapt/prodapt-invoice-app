@@ -7,13 +7,14 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 
 const starterData = {
   settings: {
-    businessName: "PRODAPT",
-    businessAddress: "Your business address",
-    businessPhone: "+263",
-    businessEmail: "info@prodapt.com",
+    businessName: "PRODAPT SOLUTIONS (PVT) LTD",
+    businessAddress: "4 Munro Close\nCranborne Park\nHarare, Harare\nZimbabwe",
+    businessPhone: "Phone: +263775412610\nMobile: +263715273544",
+    businessEmail: "info@prodaptsolution.co.zw",
     businessCurrency: "$",
     businessTax: 15,
-    businessPayment: "Banking or payment details",
+    businessTin: "2000887028",
+    businessPayment: "Bank: NMB\nBranch: Avondel\nAccount Name: Prodapt Solutions\nAccount No.: 0000231469206\nAccount currency: USD Nostro",
     logoData: ""
   },
   customers: [
@@ -33,6 +34,7 @@ const starterData = {
 };
 
 let state = loadState();
+applyBusinessDetailsMigration();
 applyWaveItemsMigration();
 let draft = emptyDocument();
 
@@ -63,6 +65,37 @@ function normalizeState(saved) {
 
 function saveState() {
   localStorage.setItem(storageKey, JSON.stringify(state));
+}
+
+function applyBusinessDetailsMigration() {
+  const genericNames = ["PRODAPT", "PRODAPT SOLUTION"];
+  let changed = false;
+
+  if (genericNames.includes(String(state.settings.businessName || "").trim().toUpperCase())) {
+    state.settings.businessName = starterData.settings.businessName;
+    changed = true;
+  }
+  if (["Your business address", ""].includes(String(state.settings.businessAddress || "").trim())) {
+    state.settings.businessAddress = starterData.settings.businessAddress;
+    changed = true;
+  }
+  if (["info@prodapt.com", ""].includes(String(state.settings.businessEmail || "").trim())) {
+    state.settings.businessEmail = starterData.settings.businessEmail;
+    changed = true;
+  }
+  if (["+263", ""].includes(String(state.settings.businessPhone || "").trim())) {
+    state.settings.businessPhone = starterData.settings.businessPhone;
+    changed = true;
+  }
+  if (["Banking or payment details", ""].includes(String(state.settings.businessPayment || "").trim())) {
+    state.settings.businessPayment = starterData.settings.businessPayment;
+    changed = true;
+  }
+  if (!state.settings.businessTin) {
+    state.settings.businessTin = starterData.settings.businessTin;
+    changed = true;
+  }
+  if (changed) saveState();
 }
 
 function itemIdentity(item) {
@@ -150,6 +183,11 @@ function formatMoney(value) {
   return `${state.settings.businessCurrency || "$"}${moneyValue(value).toFixed(2)}`;
 }
 
+function currencyLabel() {
+  const currency = String(state.settings.businessCurrency || "$").trim();
+  return currency === "$" ? "USD" : currency.toUpperCase();
+}
+
 function documentLabel(type) {
   const labels = {
     invoice: "Invoice",
@@ -166,6 +204,10 @@ function documentPrefix(type) {
     receipt: "RCT"
   };
   return prefixes[type] || "DOC";
+}
+
+function lineBreaks(value) {
+  return escapeHtml(value).replace(/\r?\n/g, "<br>");
 }
 
 function normalizeHeader(value) {
@@ -533,9 +575,10 @@ function renderPrintPage(documentData) {
   const totals = calculate(documentData);
   const customer = getCustomer(documentData.customerId);
   const label = documentLabel(documentData.type);
+  const amountLabel = documentData.type === "receipt" ? "Amount Paid" : "Amount Due";
   const logo = state.settings.logoData
     ? `<img class="invoice-logo" src="${state.settings.logoData}" alt="${escapeHtml(state.settings.businessName || "Company")} logo">`
-    : "";
+    : `<div class="invoice-logo invoice-logo-placeholder">PRODAPT<br><span>SOLUTION</span></div>`;
   const watermark = state.settings.logoData
     ? `<img class="invoice-watermark" src="${state.settings.logoData}" alt="">`
     : "";
@@ -545,66 +588,73 @@ function renderPrintPage(documentData) {
         <strong>${escapeHtml(line.item?.name || "Item")}</strong><br>
         <span>${escapeHtml(line.item?.description || "")}</span>
       </td>
-      <td>${line.quantity}</td>
+      <td class="numeric">${line.quantity}</td>
       <td>${formatMoney(line.price)}</td>
       <td>${formatMoney(line.total)}</td>
     </tr>
   `).join("");
+  const customerLines = [
+    customer?.name,
+    customer?.company,
+    customer?.address,
+    customer?.phone,
+    customer?.email
+  ].filter(Boolean).map(lineBreaks).join("<br>");
+  const contactLine = [state.settings.businessPhone, state.settings.businessEmail]
+    .filter(Boolean)
+    .map(lineBreaks)
+    .join("<br>");
 
   document.querySelector("#printPage").innerHTML = `
     <div class="invoice-sheet">
       ${watermark}
       <header class="invoice-header">
-        <div class="invoice-brand">
-          ${logo}
-          <div>
-            <h2>${escapeHtml(state.settings.businessName || "PRODAPT")}</h2>
-            <p>${escapeHtml(state.settings.businessAddress || "")}</p>
-            <p>${escapeHtml(state.settings.businessPhone || "")} &middot; ${escapeHtml(state.settings.businessEmail || "")}</p>
-          </div>
-        </div>
-        <div>
+        <div class="invoice-logo-wrap">${logo}</div>
+        <div class="invoice-company">
           <h2>${label}</h2>
-          <p>${escapeHtml(documentData.number || "Draft")}</p>
+          <strong>${escapeHtml(state.settings.businessName || "PRODAPT SOLUTION")}</strong>
+          <p>${lineBreaks(state.settings.businessAddress || "")}</p>
+          <p>${contactLine}</p>
         </div>
       </header>
 
-      <section class="invoice-meta">
-        <div><strong>Date</strong><br>${escapeHtml(documentData.date)}</div>
-        <div><strong>Status</strong><br>${escapeHtml(documentData.status)}</div>
-      </section>
-
-      <section class="invoice-parties">
-        <div>
-          <strong>Bill to</strong>
-          <p>${escapeHtml(customer?.name || "")}<br>${escapeHtml(customer?.company || "")}<br>${escapeHtml(customer?.address || "")}</p>
+      <section class="invoice-info-grid">
+        <div class="invoice-bill-to">
+          <span>Bill To</span>
+          <p>${customerLines || "Customer"}</p>
         </div>
-        <div>
-          <strong>Contact</strong>
-          <p>${escapeHtml(customer?.phone || "")}<br>${escapeHtml(customer?.email || "")}</p>
+        <div class="invoice-meta-card">
+          <div><strong>${label} Number:</strong><span>${escapeHtml(documentData.number || "Draft")}</span></div>
+          <div><strong>${label} Date:</strong><span>${escapeHtml(documentData.date)}</span></div>
+          <div><strong>Status:</strong><span>${escapeHtml(documentData.status)}</span></div>
+          <div class="amount-due"><strong>${amountLabel} (${currencyLabel()}):</strong><span>${formatMoney(totals.total)}</span></div>
         </div>
       </section>
 
-      <table>
+      <table class="invoice-items-table">
         <thead>
-          <tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+          <tr><th>Items</th><th>Quantity</th><th>Price</th><th>Amount</th></tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
 
       <section class="invoice-totals">
-        <div class="invoice-total-row"><span>Subtotal</span><strong>${formatMoney(totals.subtotal)}</strong></div>
-        <div class="invoice-total-row"><span>Discount</span><strong>${formatMoney(totals.discount)}</strong></div>
-        <div class="invoice-total-row"><span>Tax</span><strong>${formatMoney(totals.tax)}</strong></div>
-        <div class="invoice-total-row strong"><span>Total</span><strong>${formatMoney(totals.total)}</strong></div>
+        <div class="invoice-total-row"><strong>Subtotal:</strong><span>${formatMoney(totals.subtotal)}</span></div>
+        <div class="invoice-total-row"><strong>Discount:</strong><span>${formatMoney(totals.discount)}</span></div>
+        <div class="invoice-total-row"><strong>Tax:</strong><span>${formatMoney(totals.tax)}</span></div>
+        <div class="invoice-total-row strong"><strong>Total:</strong><span>${formatMoney(totals.total)}</span></div>
+        <div class="invoice-total-row due"><strong>${amountLabel} (${currencyLabel()}):</strong><span>${formatMoney(totals.total)}</span></div>
       </section>
 
       <section class="invoice-notes">
-        <strong>Notes</strong>
-        <p>${escapeHtml(documentData.notes || state.settings.businessPayment || "")}</p>
+        <strong>Notes / Terms</strong>
+        <p>${lineBreaks(documentData.notes || state.settings.businessPayment || "")}</p>
       </section>
 
-      <footer class="document-powered-by">Powered by PRODAPT SOLUTION</footer>
+      <footer class="document-footer">
+        ${state.settings.businessTin ? `<div>TIN ${escapeHtml(state.settings.businessTin)}</div>` : ""}
+        <strong>Powered by PRODAPT SOLUTION</strong>
+      </footer>
     </div>
   `;
 }
@@ -794,6 +844,7 @@ document.querySelector("#settingsForm").addEventListener("submit", (event) => {
     businessEmail: document.querySelector("#businessEmail").value,
     businessCurrency: document.querySelector("#businessCurrency").value,
     businessTax: moneyValue(document.querySelector("#businessTax").value),
+    businessTin: document.querySelector("#businessTin").value,
     businessPayment: document.querySelector("#businessPayment").value,
     logoData: state.settings.logoData || ""
   };
@@ -836,7 +887,15 @@ document.querySelector("#emailDocument").addEventListener("click", emailCurrentD
 document.querySelector("#whatsappDocument").addEventListener("click", whatsappCurrentDocument);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js").catch(() => {});
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+  navigator.serviceWorker.register("service-worker.js?v=20260831-docstyle").then((registration) => {
+    registration.update();
+  }).catch(() => {});
 }
 
 renderAll();

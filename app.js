@@ -1,5 +1,10 @@
 const storageKey = "prodapt.invoice.studio.v1";
 
+if (["http:", "https:"].includes(window.location.protocol) && window.location.pathname.endsWith("/index.html")) {
+  const cleanPath = window.location.pathname.replace(/index\.html$/, "");
+  window.history.replaceState(null, "", `${cleanPath}${window.location.search}${window.location.hash}`);
+}
+
 const today = () => new Date().toISOString().slice(0, 10);
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const moneyValue = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -893,7 +898,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20260831-docstyle").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20260831-docstyle2").then((registration) => {
     registration.update();
   }).catch(() => {});
 }

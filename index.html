@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0f766e">
     <title>PRODAPT Invoice Studio</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=20260831-docstyle2">
+    <link rel="stylesheet" href="styles.css?v=20260902-customers-download">
   </head>
   <body>
     <div class="app-shell">
@@ -16,7 +16,7 @@
           <h1>PRODAPT</h1>
         </div>
         <div class="topbar-actions">
-          <button class="icon-button" id="printDocument" title="Export PDF" aria-label="Export PDF">
+          <button class="icon-button" id="printDocument" title="Download PDF" aria-label="Download PDF">
             <span aria-hidden="true">PDF</span>
           </button>
           <button class="icon-button" id="shareDocument" title="Share" aria-label="Share">
@@ -146,7 +146,7 @@
                 <div class="profit-total"><dt>Private profit</dt><dd id="totalProfit">$0.00</dd></div>
               </dl>
               <div class="share-stack">
-                <button type="button" class="primary-button" id="previewPrint">Export PDF</button>
+                <button type="button" class="primary-button" id="previewPrint">Download PDF</button>
                 <button type="button" class="secondary-button" id="emailDocument">Email</button>
                 <button type="button" class="secondary-button" id="whatsappDocument">WhatsApp</button>
               </div>
@@ -166,7 +166,10 @@
               <button class="primary-button" type="submit">Save customer</button>
             </form>
             <div class="panel">
-              <h2>Customer list</h2>
+              <div class="section-heading compact">
+                <h2>Customer list</h2>
+                <span class="item-count" id="customerCount">0 customers loaded</span>
+              </div>
               <div class="record-list" id="customerList"></div>
             </div>
           </div>
@@ -231,7 +234,8 @@
 
     <section class="print-page" id="printPage" aria-hidden="true"></section>
 
-    <script src="wave-items.js?v=20260831-docstyle2"></script>
-    <script src="app.js?v=20260831-docstyle2"></script>
+    <script src="customers-import.js?v=20260902-customers-download"></script>
+    <script src="wave-items.js?v=20260902-customers-download"></script>
+    <script src="app.js?v=20260902-customers-download"></script>
   </body>
 </html>

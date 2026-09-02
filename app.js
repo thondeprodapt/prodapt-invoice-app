@@ -40,6 +40,7 @@ const starterData = {
 
 let state = loadState();
 applyBusinessDetailsMigration();
+applyImportedCustomersMigration();
 applyWaveItemsMigration();
 let draft = emptyDocument();
 
@@ -101,6 +102,83 @@ function applyBusinessDetailsMigration() {
     changed = true;
   }
   if (changed) saveState();
+}
+
+function customerContactKey(customer) {
+  return [
+    String(customer.name || "").trim().toLowerCase(),
+    String(customer.email || "").trim().toLowerCase(),
+    String(customer.phone || "").trim().toLowerCase()
+  ].join("|");
+}
+
+function customerSourceKey(customer) {
+  return String(customer.sourceId || customer.importedSourceId || "").trim();
+}
+
+function isStarterCustomer(customer) {
+  return customer?.name === "Sample Customer" && customer?.email === "customer@example.com";
+}
+
+function applyImportedCustomersMigration() {
+  const importedCustomers = Array.isArray(window.PRODAPT_IMPORTED_CUSTOMERS) ? window.PRODAPT_IMPORTED_CUSTOMERS : [];
+  if (!importedCustomers.length) return;
+
+  const migrationWasRecorded = Boolean(state.migrations?.customers20260902);
+  let changed = false;
+  if (state.customers.length === 1 && isStarterCustomer(state.customers[0])) {
+    state.customers = [];
+    changed = true;
+  }
+
+  const existingBySource = new Map();
+  const existingByContact = new Map();
+  state.customers.forEach((customer) => {
+    const sourceKey = customerSourceKey(customer);
+    const contactKey = customerContactKey(customer);
+    if (sourceKey) existingBySource.set(sourceKey, customer);
+    if (contactKey !== "||" && !existingByContact.has(contactKey)) existingByContact.set(contactKey, customer);
+  });
+
+  importedCustomers.forEach((customer) => {
+    const sourceId = customerSourceKey(customer);
+    const contactKey = customerContactKey(customer);
+    const existing = sourceId ? existingBySource.get(sourceId) : existingByContact.get(contactKey);
+
+    if (existing) {
+      if (sourceId && !customerSourceKey(existing)) {
+        existing.sourceId = sourceId;
+        changed = true;
+      }
+      ["company", "phone", "email", "address"].forEach((field) => {
+        if (!existing[field] && customer[field]) {
+          existing[field] = customer[field];
+          changed = true;
+        }
+      });
+      return;
+    }
+
+    const imported = {
+      id: uid(),
+      sourceId,
+      name: customer.name,
+      company: customer.company || "",
+      phone: customer.phone || "",
+      email: customer.email || "",
+      address: customer.address || "",
+      balance: moneyValue(customer.balance),
+      overdue: moneyValue(customer.overdue),
+      createdAt: customer.createdAt || ""
+    };
+    state.customers.push(imported);
+    if (sourceId) existingBySource.set(sourceId, imported);
+    if (contactKey !== "||") existingByContact.set(contactKey, imported);
+    changed = true;
+  });
+
+  state.migrations = { ...(state.migrations || {}), customers20260902: true };
+  if (changed || !migrationWasRecorded) saveState();
 }
 
 function itemIdentity(item) {
@@ -451,6 +529,10 @@ function renderDashboard() {
 
 function renderCustomers() {
   const list = document.querySelector("#customerList");
+  const count = document.querySelector("#customerCount");
+  if (count) {
+    count.textContent = `${state.customers.length} customers loaded`;
+  }
   list.innerHTML = state.customers.map((customer) => `
     <article class="record-card">
       <div class="card-row">
@@ -694,6 +776,12 @@ function whatsappCurrentDocument() {
   window.open(`https://wa.me/?text=${text}`, "_blank", "noopener");
 }
 
+function downloadCurrentDocument() {
+  updateDraftFromForm();
+  renderPrintPage(draft);
+  window.print();
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -878,14 +966,10 @@ document.querySelector("#removeLogo").addEventListener("click", () => {
 });
 
 document.querySelector("#printDocument").addEventListener("click", () => {
-  updateDraftFromForm();
-  renderPrintPage(draft);
-  window.print();
+  downloadCurrentDocument();
 });
 document.querySelector("#previewPrint").addEventListener("click", () => {
-  updateDraftFromForm();
-  renderPrintPage(draft);
-  window.print();
+  downloadCurrentDocument();
 });
 document.querySelector("#shareDocument").addEventListener("click", shareCurrentDocument);
 document.querySelector("#emailDocument").addEventListener("click", emailCurrentDocument);
@@ -898,7 +982,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20260831-docstyle2").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20260902-customers-download").then((registration) => {
     registration.update();
   }).catch(() => {});
 }

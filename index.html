@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0f766e">
     <title>PRODAPT Invoice Studio</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=20260902-customers-download">
+    <link rel="stylesheet" href="styles.css?v=20260903-records-pdf">
   </head>
   <body>
     <div class="app-shell">
@@ -19,7 +19,7 @@
           <button class="icon-button" id="printDocument" title="Download PDF" aria-label="Download PDF">
             <span aria-hidden="true">PDF</span>
           </button>
-          <button class="icon-button" id="shareDocument" title="Share" aria-label="Share">
+          <button class="icon-button" id="shareDocument" title="Share PDF" aria-label="Share PDF">
             <span aria-hidden="true">Share</span>
           </button>
         </div>
@@ -37,7 +37,7 @@
         <section class="view active" id="dashboardView">
           <div class="metrics-grid">
             <article class="metric">
-              <span>Total sales</span>
+              <span>Invoiced</span>
               <strong id="metricSales">$0.00</strong>
             </article>
             <article class="metric">
@@ -45,13 +45,37 @@
               <strong id="metricProfit">$0.00</strong>
             </article>
             <article class="metric">
+              <span>Receipts</span>
+              <strong id="metricReceipts">$0.00</strong>
+            </article>
+            <article class="metric">
+              <span>Outstanding</span>
+              <strong id="metricOutstanding">$0.00</strong>
+            </article>
+            <article class="metric compact-metric">
               <span>Invoices</span>
               <strong id="metricInvoices">0</strong>
             </article>
-            <article class="metric">
+            <article class="metric compact-metric">
               <span>Quotations</span>
               <strong id="metricQuotes">0</strong>
             </article>
+            <article class="metric compact-metric">
+              <span>Receipts</span>
+              <strong id="metricReceiptCount">0</strong>
+            </article>
+            <article class="metric compact-metric">
+              <span>Records</span>
+              <strong id="metricDocuments">0</strong>
+            </article>
+          </div>
+
+          <div class="progress-panel">
+            <div>
+              <span>Company progress</span>
+              <strong id="metricProgress">0% collected</strong>
+            </div>
+            <div class="progress-track"><span id="progressFill"></span></div>
           </div>
 
           <div class="section-heading">
@@ -147,8 +171,10 @@
               </dl>
               <div class="share-stack">
                 <button type="button" class="primary-button" id="previewPrint">Download PDF</button>
+                <button type="button" class="secondary-button" id="printReceipt">Print</button>
+                <button type="button" class="secondary-button" id="sharePdfDocument">Share PDF</button>
                 <button type="button" class="secondary-button" id="emailDocument">Email</button>
-                <button type="button" class="secondary-button" id="whatsappDocument">WhatsApp</button>
+                <button type="button" class="secondary-button" id="whatsappDocument">WhatsApp PDF</button>
               </div>
             </aside>
           </div>
@@ -234,8 +260,8 @@
 
     <section class="print-page" id="printPage" aria-hidden="true"></section>
 
-    <script src="customers-import.js?v=20260902-customers-download"></script>
-    <script src="wave-items.js?v=20260902-customers-download"></script>
-    <script src="app.js?v=20260902-customers-download"></script>
+    <script src="customers-import.js?v=20260903-records-pdf"></script>
+    <script src="wave-items.js?v=20260903-records-pdf"></script>
+    <script src="app.js?v=20260903-records-pdf"></script>
   </body>
 </html>

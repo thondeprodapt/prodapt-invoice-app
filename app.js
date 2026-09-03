@@ -9,6 +9,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const moneyValue = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
 const clone = (value) => JSON.parse(JSON.stringify(value));
+const defaultLogo = "prodapt-logo.png";
 
 const starterData = {
   settings: {
@@ -20,7 +21,7 @@ const starterData = {
     businessTax: 15,
     businessTin: "2000887028",
     businessPayment: "Bank: NMB\nBranch: Avondel\nAccount Name: Prodapt Solutions\nAccount No.: 0000231469206\nAccount currency: USD Nostro",
-    logoData: ""
+    logoData: defaultLogo
   },
   customers: [
     {
@@ -75,6 +76,7 @@ function saveState() {
 
 function applyBusinessDetailsMigration() {
   const genericNames = ["PRODAPT", "PRODAPT SOLUTION"];
+  const logoMigrationRecorded = Boolean(state.migrations?.defaultLogo20260903);
   let changed = false;
 
   if (genericNames.includes(String(state.settings.businessName || "").trim().toUpperCase())) {
@@ -99,6 +101,14 @@ function applyBusinessDetailsMigration() {
   }
   if (!state.settings.businessTin) {
     state.settings.businessTin = starterData.settings.businessTin;
+    changed = true;
+  }
+  if (!state.settings.logoData && !logoMigrationRecorded) {
+    state.settings.logoData = defaultLogo;
+    changed = true;
+  }
+  if (!logoMigrationRecorded) {
+    state.migrations = { ...(state.migrations || {}), defaultLogo20260903: true };
     changed = true;
   }
   if (changed) saveState();
@@ -384,8 +394,13 @@ function itemOptionLabel(item) {
 function nextDocumentNumber(type) {
   const prefix = documentPrefix(type);
   const year = new Date().getFullYear();
-  const count = state.documents.filter((document) => document.type === type).length + 1;
-  return `${prefix}-${year}-${String(count).padStart(4, "0")}`;
+  const numberPattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
+  const latest = state.documents
+    .filter((document) => document.type === type)
+    .map((document) => String(document.number || "").match(numberPattern))
+    .filter(Boolean)
+    .reduce((max, match) => Math.max(max, Number(match[1]) || 0), 0);
+  return `${prefix}-${year}-${String(latest + 1).padStart(4, "0")}`;
 }
 
 function calculate(document) {
@@ -489,14 +504,27 @@ function renderTotals() {
 function renderDashboard() {
   const invoiceDocs = state.documents.filter((document) => document.type === "invoice");
   const quoteDocs = state.documents.filter((document) => document.type === "quote");
+  const receiptDocs = state.documents.filter((document) => document.type === "receipt");
   const invoiceTotals = invoiceDocs.map(calculate);
+  const quoteTotals = quoteDocs.map(calculate);
+  const receiptTotals = receiptDocs.map(calculate);
   const sales = invoiceTotals.reduce((sum, total) => sum + total.total, 0);
   const profit = invoiceTotals.reduce((sum, total) => sum + total.profit, 0);
+  const quoted = quoteTotals.reduce((sum, total) => sum + total.total, 0);
+  const received = receiptTotals.reduce((sum, total) => sum + total.total, 0);
+  const outstanding = Math.max(sales - received, 0);
+  const progress = sales > 0 ? Math.min((received / sales) * 100, 100) : 0;
 
   document.querySelector("#metricSales").textContent = formatMoney(sales);
   document.querySelector("#metricProfit").textContent = formatMoney(profit);
+  document.querySelector("#metricReceipts").textContent = formatMoney(received);
+  document.querySelector("#metricOutstanding").textContent = formatMoney(outstanding);
   document.querySelector("#metricInvoices").textContent = invoiceDocs.length;
   document.querySelector("#metricQuotes").textContent = quoteDocs.length;
+  document.querySelector("#metricReceiptCount").textContent = receiptDocs.length;
+  document.querySelector("#metricDocuments").textContent = state.documents.length;
+  document.querySelector("#metricProgress").textContent = `${progress.toFixed(0)}% collected - ${formatMoney(quoted)} quoted`;
+  document.querySelector("#progressFill").style.width = `${progress}%`;
 
   const list = document.querySelector("#documentList");
   if (!state.documents.length) {
@@ -513,7 +541,7 @@ function renderDashboard() {
         <div class="card-row">
           <div>
             <div class="card-title">${label} ${escapeHtml(document.number)}</div>
-            <div class="card-meta">${escapeHtml(customer?.name || "No customer")} · ${document.date} · ${document.status}</div>
+            <div class="card-meta">${escapeHtml(customer?.name || "No customer")} - ${document.date} - ${document.status}</div>
           </div>
           <strong>${formatMoney(totals.total)}</strong>
         </div>
@@ -606,9 +634,9 @@ function updateDraftFromForm() {
   draft.notes = document.querySelector("#docNotes").value;
 }
 
-function saveDocument() {
+function persistCurrentDocument() {
   updateDraftFromForm();
-  if (!draft.lines.length) return;
+  if (!draft.lines.length) return null;
   if (!draft.number) draft.number = nextDocumentNumber(draft.type);
   if (!draft.id) {
     draft.id = uid();
@@ -619,6 +647,11 @@ function saveDocument() {
   }
   state.currentDocumentId = draft.id;
   saveState();
+  return clone(draft);
+}
+
+function saveDocument() {
+  if (!persistCurrentDocument()) return;
   renderAll();
 }
 
@@ -663,6 +696,7 @@ function renderPrintPage(documentData) {
   const customer = getCustomer(documentData.customerId);
   const label = documentLabel(documentData.type);
   const amountLabel = documentData.type === "receipt" ? "Amount Paid" : "Amount Due";
+  const sheetClass = documentData.type === "receipt" ? "invoice-sheet receipt-sheet" : "invoice-sheet";
   const logo = state.settings.logoData
     ? `<img class="invoice-logo" src="${state.settings.logoData}" alt="${escapeHtml(state.settings.businessName || "Company")} logo">`
     : `<div class="invoice-logo invoice-logo-placeholder">PRODAPT<br><span>SOLUTION</span></div>`;
@@ -693,7 +727,7 @@ function renderPrintPage(documentData) {
     .join("<br>");
 
   document.querySelector("#printPage").innerHTML = `
-    <div class="invoice-sheet">
+    <div class="${sheetClass}">
       ${watermark}
       <header class="invoice-header">
         <div class="invoice-logo-wrap">${logo}</div>
@@ -746,16 +780,18 @@ function renderPrintPage(documentData) {
   `;
 }
 
-function documentSummary() {
-  updateDraftFromForm();
-  const totals = calculate(draft);
-  const customer = getCustomer(draft.customerId);
-  const label = documentLabel(draft.type);
-  return `${label} ${draft.number || "Draft"} for ${customer?.name || "customer"}: ${formatMoney(totals.total)}`;
+function documentSummary(documentData = draft) {
+  const totals = calculate(documentData);
+  const customer = getCustomer(documentData.customerId);
+  const label = documentLabel(documentData.type);
+  return `${label} ${documentData.number || "Draft"} for ${customer?.name || "customer"}: ${formatMoney(totals.total)}`;
 }
 
 async function shareCurrentDocument() {
-  const text = documentSummary();
+  const documentData = persistCurrentDocument();
+  if (!documentData) return;
+  renderAll();
+  const text = documentSummary(documentData);
   if (navigator.share) {
     await navigator.share({ title: "PRODAPT document", text });
   } else {
@@ -764,21 +800,294 @@ async function shareCurrentDocument() {
   }
 }
 
-function emailCurrentDocument() {
-  const customer = getCustomer(draft.customerId);
-  const subject = encodeURIComponent(`PRODAPT ${documentLabel(draft.type)} ${draft.number || "Draft"}`);
-  const body = encodeURIComponent(`${documentSummary()}\n\nRegards,\n${state.settings.businessName}`);
+function documentFileName(documentData) {
+  const label = documentLabel(documentData.type);
+  const number = documentData.number || nextDocumentNumber(documentData.type);
+  return `PRODAPT-${label}-${number}.pdf`.replace(/[^a-z0-9._-]+/gi, "-");
+}
+
+function pdfHex(value) {
+  const text = String(value ?? "");
+  let hex = "FEFF";
+  for (let index = 0; index < text.length; index += 1) {
+    hex += text.charCodeAt(index).toString(16).padStart(4, "0");
+  }
+  return `<${hex}>`;
+}
+
+function wrapText(value, maxChars) {
+  const words = String(value || "").replace(/\r/g, "").split(/\s+/);
+  const lines = [];
+  let line = "";
+  words.forEach((word) => {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length > maxChars && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  });
+  if (line) lines.push(line);
+  return lines.length ? lines : [""];
+}
+
+function dataUrlToBytes(dataUrl) {
+  const base64 = String(dataUrl || "").split(",")[1] || "";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function loadImage(src) {
+  return new Promise((resolve) => {
+    if (!src || typeof Image === "undefined" || !document.createElement) {
+      resolve(null);
+      return;
+    }
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.crossOrigin = "anonymous";
+    image.src = src;
+  });
+}
+
+async function loadLogoForPdf() {
+  const image = await loadImage(state.settings.logoData || defaultLogo);
+  if (!image || !document.createElement) return null;
+  const canvas = document.createElement("canvas");
+  const maxWidth = 640;
+  const scale = Math.min(1, maxWidth / image.naturalWidth);
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return {
+    width: canvas.width,
+    height: canvas.height,
+    bytes: dataUrlToBytes(canvas.toDataURL("image/jpeg", 0.88))
+  };
+}
+
+function makePdfBlob(pageWidth, pageHeight, content, logoImage) {
+  const encoder = new TextEncoder();
+  const objects = [];
+  const addObject = (chunks) => {
+    objects.push(Array.isArray(chunks) ? chunks : [chunks]);
+    return objects.length;
+  };
+
+  const catalogId = addObject("<< /Type /Catalog /Pages 2 0 R >>");
+  const pagesId = addObject("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+  const imageId = logoImage ? 6 : null;
+  const xObject = imageId ? ` /XObject << /Logo ${imageId} 0 R >>` : "";
+  addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >>${xObject} >> /Contents ${imageId ? 7 : 6} 0 R >>`);
+  addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
+  if (logoImage) {
+    addObject([
+      `<< /Type /XObject /Subtype /Image /Width ${logoImage.width} /Height ${logoImage.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoImage.bytes.length} >>\nstream\n`,
+      logoImage.bytes,
+      "\nendstream"
+    ]);
+  }
+  const contentBytes = encoder.encode(content);
+  addObject([`<< /Length ${contentBytes.length} >>\nstream\n`, contentBytes, "\nendstream"]);
+
+  const chunks = ["%PDF-1.7\n"];
+  const offsets = [0];
+  let length = encoder.encode(chunks[0]).length;
+  objects.forEach((object, index) => {
+    offsets.push(length);
+    const prefix = `${index + 1} 0 obj\n`;
+    chunks.push(prefix, ...object, "\nendobj\n");
+    length += encoder.encode(prefix).length + object.reduce((sum, chunk) => sum + (typeof chunk === "string" ? encoder.encode(chunk).length : chunk.length), 0) + encoder.encode("\nendobj\n").length;
+  });
+  const xrefOffset = length;
+  const xref = [
+    `xref\n0 ${objects.length + 1}\n`,
+    "0000000000 65535 f \n",
+    ...offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`),
+    `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
+  ].join("");
+  chunks.push(xref);
+
+  return new Blob(chunks, { type: "application/pdf" });
+}
+
+async function generateDocumentPdfBlob(documentData) {
+  const isReceipt = documentData.type === "receipt";
+  const pageWidth = isReceipt ? 226.77 : 612;
+  const pageHeight = isReceipt ? 900 : 792;
+  const margin = isReceipt ? 14 : 42;
+  const logoImage = await loadLogoForPdf();
+  const totals = calculate(documentData);
+  const customer = getCustomer(documentData.customerId);
+  const label = documentLabel(documentData.type);
+  const amountLabel = isReceipt ? "Amount Paid" : "Amount Due";
+  const maxChars = isReceipt ? 28 : 78;
+  const commands = [];
+  let y = pageHeight - margin;
+
+  const color = (r, g, b) => commands.push(`${r} ${g} ${b} rg`);
+  const text = (value, x, textY, size = 10, bold = false) => {
+    commands.push(`BT /${bold ? "F2" : "F1"} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${textY.toFixed(2)} Tm ${pdfHex(value)} Tj ET`);
+  };
+  const line = (x1, y1, x2, y2) => commands.push(`0.65 w ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S`);
+  const addWrapped = (value, x, size = 10, bold = false, chars = maxChars, leading = size + 4) => {
+    wrapText(value, chars).forEach((part) => {
+      text(part, x, y, size, bold);
+      y -= leading;
+    });
+  };
+
+  if (logoImage) {
+    const logoWidth = isReceipt ? 150 : 135;
+    const logoHeight = logoWidth * (logoImage.height / logoImage.width);
+    const logoX = isReceipt ? (pageWidth - logoWidth) / 2 : margin;
+    commands.push(`q ${logoWidth.toFixed(2)} 0 0 ${logoHeight.toFixed(2)} ${logoX.toFixed(2)} ${(y - logoHeight).toFixed(2)} cm /Logo Do Q`);
+    y -= logoHeight + (isReceipt ? 12 : 6);
+  }
+
+  color(0.15, 0.39, 0.72);
+  text(label.toUpperCase(), isReceipt ? margin : pageWidth - margin - 170, isReceipt ? y : pageHeight - margin - 10, isReceipt ? 18 : 28, true);
+  color(0, 0, 0);
+  if (isReceipt) y -= 24;
+
+  addWrapped(state.settings.businessName || "PRODAPT SOLUTION", margin, isReceipt ? 9 : 10, true, maxChars);
+  addWrapped(state.settings.businessAddress || "", margin, isReceipt ? 8 : 9);
+  addWrapped([state.settings.businessPhone, state.settings.businessEmail].filter(Boolean).join(" | "), margin, isReceipt ? 8 : 9);
+  y -= isReceipt ? 6 : 12;
+  line(margin, y, pageWidth - margin, y);
+  y -= isReceipt ? 14 : 20;
+
+  text(`${label} Number: ${documentData.number || "Draft"}`, margin, y, isReceipt ? 9 : 11, true);
+  y -= isReceipt ? 13 : 16;
+  text(`${label} Date: ${documentData.date}`, margin, y, isReceipt ? 9 : 10);
+  y -= isReceipt ? 13 : 16;
+  text(`Status: ${documentData.status}`, margin, y, isReceipt ? 9 : 10);
+  y -= isReceipt ? 16 : 22;
+
+  addWrapped("Bill To", margin, isReceipt ? 9 : 10, true);
+  addWrapped([customer?.name, customer?.company, customer?.address, customer?.phone, customer?.email].filter(Boolean).join("\n"), margin, isReceipt ? 8 : 9);
+  y -= isReceipt ? 6 : 12;
+
+  line(margin, y, pageWidth - margin, y);
+  y -= isReceipt ? 13 : 18;
+  text("Items", margin, y, isReceipt ? 9 : 10, true);
+  text("Qty", pageWidth - margin - (isReceipt ? 56 : 150), y, isReceipt ? 9 : 10, true);
+  text("Amount", pageWidth - margin - (isReceipt ? 38 : 58), y, isReceipt ? 9 : 10, true);
+  y -= isReceipt ? 12 : 16;
+
+  totals.lines.forEach((itemLine) => {
+    addWrapped(itemLine.item?.name || "Item", margin, isReceipt ? 8 : 9, true, isReceipt ? 20 : 48, isReceipt ? 10 : 12);
+    if (itemLine.item?.description) addWrapped(itemLine.item.description, margin, isReceipt ? 7 : 8, false, isReceipt ? 24 : 64, isReceipt ? 9 : 11);
+    text(String(itemLine.quantity), pageWidth - margin - (isReceipt ? 56 : 150), y + (isReceipt ? 10 : 13), isReceipt ? 8 : 9);
+    text(formatMoney(itemLine.total), pageWidth - margin - (isReceipt ? 52 : 80), y + (isReceipt ? 10 : 13), isReceipt ? 8 : 9);
+    y -= isReceipt ? 4 : 6;
+  });
+
+  y -= 4;
+  line(margin, y, pageWidth - margin, y);
+  y -= isReceipt ? 13 : 18;
+  [
+    ["Subtotal", totals.subtotal],
+    ["Discount", totals.discount],
+    ["Tax", totals.tax],
+    ["Total", totals.total],
+    [amountLabel, totals.total]
+  ].forEach(([name, amount], index) => {
+    text(`${name}:`, pageWidth - margin - (isReceipt ? 94 : 180), y, isReceipt ? 9 : 10, index >= 3);
+    text(formatMoney(amount), pageWidth - margin - (isReceipt ? 52 : 80), y, isReceipt ? 9 : 10, index >= 3);
+    y -= isReceipt ? 13 : 16;
+  });
+
+  y -= isReceipt ? 5 : 12;
+  addWrapped("Notes / Terms", margin, isReceipt ? 8 : 9, true);
+  addWrapped(documentData.notes || state.settings.businessPayment || "", margin, isReceipt ? 7 : 8, false, maxChars);
+  y -= isReceipt ? 10 : 16;
+  if (state.settings.businessTin) addWrapped(`TIN ${state.settings.businessTin}`, margin, isReceipt ? 7 : 8);
+  color(0.04, 0.17, 0.47);
+  addWrapped("Powered by PRODAPT SOLUTION", margin, isReceipt ? 8 : 12, true);
+
+  return makePdfBlob(pageWidth, pageHeight, commands.join("\n"), logoImage);
+}
+
+async function createDocumentPdfFile(documentData) {
+  const blob = await generateDocumentPdfBlob(documentData);
+  const fileName = documentFileName(documentData);
+  if (typeof File === "function") {
+    return new File([blob], fileName, { type: "application/pdf" });
+  }
+  blob.name = fileName;
+  return blob;
+}
+
+function downloadFile(file) {
+  const url = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = file.name || "PRODAPT-document.pdf";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function sharePdfCurrentDocument(channel = "share") {
+  const documentData = persistCurrentDocument();
+  if (!documentData) return;
+  renderAll();
+  const file = await createDocumentPdfFile(documentData);
+  const text = documentSummary(documentData);
+  if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+    await navigator.share({ title: file.name, text, files: [file] });
+    return;
+  }
+  downloadFile(file);
+  if (channel === "whatsapp") {
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\nPDF downloaded as ${file.name}`)}`, "_blank", "noopener");
+  } else {
+    alert(`PDF downloaded as ${file.name}. Use Share or attach it from Downloads.`);
+  }
+}
+
+async function emailCurrentDocument() {
+  const documentData = persistCurrentDocument();
+  if (!documentData) return;
+  renderAll();
+  const file = await createDocumentPdfFile(documentData);
+  downloadFile(file);
+  const customer = getCustomer(documentData.customerId);
+  const subject = encodeURIComponent(`PRODAPT ${documentLabel(documentData.type)} ${documentData.number || "Draft"}`);
+  const body = encodeURIComponent(`${documentSummary(documentData)}\n\nThe PDF file has downloaded as ${file.name}. Please attach it to this email.\n\nRegards,\n${state.settings.businessName}`);
   window.location.href = `mailto:${encodeURIComponent(customer?.email || "")}?subject=${subject}&body=${body}`;
 }
 
 function whatsappCurrentDocument() {
-  const text = encodeURIComponent(documentSummary());
-  window.open(`https://wa.me/?text=${text}`, "_blank", "noopener");
+  sharePdfCurrentDocument("whatsapp");
 }
 
-function downloadCurrentDocument() {
-  updateDraftFromForm();
-  renderPrintPage(draft);
+async function downloadCurrentDocument() {
+  const documentData = persistCurrentDocument();
+  if (!documentData) return;
+  renderAll();
+  const file = await createDocumentPdfFile(documentData);
+  downloadFile(file);
+}
+
+function printCurrentDocument() {
+  const documentData = persistCurrentDocument();
+  if (!documentData) return;
+  renderAll();
+  renderPrintPage(documentData);
   window.print();
 }
 
@@ -971,7 +1280,15 @@ document.querySelector("#printDocument").addEventListener("click", () => {
 document.querySelector("#previewPrint").addEventListener("click", () => {
   downloadCurrentDocument();
 });
-document.querySelector("#shareDocument").addEventListener("click", shareCurrentDocument);
+document.querySelector("#printReceipt").addEventListener("click", () => {
+  printCurrentDocument();
+});
+document.querySelector("#shareDocument").addEventListener("click", () => {
+  sharePdfCurrentDocument("share");
+});
+document.querySelector("#sharePdfDocument").addEventListener("click", () => {
+  sharePdfCurrentDocument("share");
+});
 document.querySelector("#emailDocument").addEventListener("click", emailCurrentDocument);
 document.querySelector("#whatsappDocument").addEventListener("click", whatsappCurrentDocument);
 
@@ -982,7 +1299,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20260902-customers-download").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20260903-records-pdf").then((registration) => {
     registration.update();
   }).catch(() => {});
 }

@@ -143,7 +143,7 @@ h2 {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
 }
 
@@ -172,6 +172,48 @@ h2 {
   display: block;
   margin-top: 8px;
   font-size: clamp(1.2rem, 4vw, 2rem);
+}
+
+.compact-metric strong {
+  font-size: 1.45rem;
+}
+
+.progress-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.progress-panel span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.progress-panel strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 1.2rem;
+}
+
+.progress-track {
+  height: 12px;
+  overflow: hidden;
+  background: #e6edf1;
+  border-radius: 999px;
+}
+
+.progress-track span {
+  display: block;
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #2563b8, #f97316);
+  border-radius: inherit;
 }
 
 .section-heading {
@@ -474,9 +516,10 @@ textarea:focus {
 }
 
 .invoice-logo {
-  width: 96px;
-  max-height: 74px;
+  width: 156px;
+  max-height: 82px;
   object-fit: contain;
+  object-position: left center;
   flex: 0 0 auto;
 }
 
@@ -707,6 +750,134 @@ textarea:focus {
   font-weight: 900;
 }
 
+.receipt-sheet {
+  width: 80mm;
+  min-height: auto;
+  padding: 5mm 4mm 8mm;
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.receipt-sheet .invoice-watermark {
+  width: 60mm;
+  max-height: 60mm;
+  opacity: 0.045;
+  transform: translate(-50%, -50%) rotate(-12deg);
+}
+
+.receipt-sheet .invoice-header,
+.receipt-sheet .invoice-info-grid,
+.receipt-sheet .invoice-meta-card,
+.receipt-sheet .invoice-meta-card div {
+  display: block;
+}
+
+.receipt-sheet .invoice-header {
+  padding: 0 0 4mm;
+  border-bottom: 1px dashed #9ca3af;
+  text-align: center;
+}
+
+.receipt-sheet .invoice-logo-wrap {
+  min-height: 0;
+  justify-content: center;
+}
+
+.receipt-sheet .invoice-logo {
+  width: 58mm;
+  max-height: 24mm;
+  object-position: center;
+}
+
+.receipt-sheet .invoice-company {
+  text-align: center;
+}
+
+.receipt-sheet .invoice-company h2 {
+  margin-top: 2mm;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.receipt-sheet .invoice-company strong {
+  margin-top: 3mm;
+  font-size: 10px;
+}
+
+.receipt-sheet .invoice-company p,
+.receipt-sheet .invoice-bill-to p,
+.receipt-sheet .invoice-meta-card {
+  font-size: 9px;
+}
+
+.receipt-sheet .invoice-info-grid {
+  padding: 4mm 0;
+}
+
+.receipt-sheet .invoice-bill-to {
+  margin-bottom: 4mm;
+}
+
+.receipt-sheet .invoice-bill-to span {
+  margin-bottom: 1mm;
+  font-size: 9px;
+}
+
+.receipt-sheet .invoice-meta-card {
+  text-align: left;
+}
+
+.receipt-sheet .invoice-meta-card div {
+  margin-top: 1mm;
+}
+
+.receipt-sheet .invoice-meta-card .amount-due {
+  padding: 2mm;
+  text-align: center;
+}
+
+.receipt-sheet .invoice-items-table th,
+.receipt-sheet .invoice-items-table td {
+  padding: 2mm 1mm;
+  font-size: 9px;
+}
+
+.receipt-sheet .invoice-items-table th:nth-child(2),
+.receipt-sheet .invoice-items-table td:nth-child(2) {
+  width: 10mm;
+}
+
+.receipt-sheet .invoice-items-table th:nth-child(3),
+.receipt-sheet .invoice-items-table td:nth-child(3) {
+  display: none;
+}
+
+.receipt-sheet .invoice-totals {
+  width: 100%;
+  margin-top: 3mm;
+}
+
+.receipt-sheet .invoice-total-row {
+  padding: 1.5mm 0;
+  font-size: 10px;
+}
+
+.receipt-sheet .invoice-notes {
+  margin-top: 4mm;
+  font-size: 9px;
+}
+
+.receipt-sheet .document-footer {
+  position: static;
+  margin-top: 5mm;
+  font-size: 9px;
+}
+
+.receipt-sheet .document-footer strong {
+  margin-top: 2mm;
+  font-size: 11px;
+}
+
 @media (max-width: 780px) {
   .app-shell {
     padding: 12px;
@@ -769,6 +940,11 @@ textarea:focus {
     margin: 0;
   }
 
+  @page receipt {
+    size: 80mm auto;
+    margin: 0;
+  }
+
   body {
     background: white;
     margin: 0;
@@ -787,5 +963,12 @@ textarea:focus {
     min-height: 270mm;
     padding: 15mm 13mm 34mm;
     box-shadow: none;
+  }
+
+  .receipt-sheet {
+    page: receipt;
+    width: 80mm;
+    min-height: auto;
+    padding: 5mm 4mm 8mm;
   }
 }

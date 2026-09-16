@@ -700,6 +700,9 @@ function renderPrintPage(documentData) {
   const logo = state.settings.logoData
     ? `<img class="invoice-logo" src="${state.settings.logoData}" alt="${escapeHtml(state.settings.businessName || "Company")} logo">`
     : `<div class="invoice-logo invoice-logo-placeholder">PRODAPT<br><span>SOLUTION</span></div>`;
+  const watermark = state.settings.logoData
+    ? `<img class="invoice-watermark" src="${state.settings.logoData}" alt="">`
+    : "";
   const rows = totals.lines.map((line) => `
     <tr>
       <td>
@@ -724,6 +727,7 @@ function renderPrintPage(documentData) {
 
   document.querySelector("#printPage").innerHTML = `
     <div class="${sheetClass}">
+      ${watermark}
       <header class="invoice-header">
         <div class="invoice-brand-block">
           <div class="invoice-logo-wrap">${logo}</div>
@@ -882,12 +886,15 @@ function makePdfBlob(pageWidth, pageHeight, content, logoImage) {
 
   const catalogId = addObject("<< /Type /Catalog /Pages 2 0 R >>");
   const pagesId = addObject("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
-  const imageId = logoImage ? 6 : null;
-  const xObject = imageId ? ` /XObject << /Logo ${imageId} 0 R >>` : "";
-  addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >>${xObject} >> /Contents ${imageId ? 7 : 6} 0 R >>`);
+  const gStateId = logoImage ? 6 : null;
+  const imageId = logoImage ? 7 : null;
+  const contentId = logoImage ? 8 : 6;
+  const imageResources = imageId ? ` /XObject << /Logo ${imageId} 0 R >> /ExtGState << /Watermark ${gStateId} 0 R >>` : "";
+  addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >>${imageResources} >> /Contents ${contentId} 0 R >>`);
   addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
   addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
   if (logoImage) {
+    addObject("<< /Type /ExtGState /ca 0.07 /CA 0.07 >>");
     addObject([
       `<< /Type /XObject /Subtype /Image /Width ${logoImage.width} /Height ${logoImage.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoImage.bytes.length} >>\nstream\n`,
       logoImage.bytes,
@@ -943,6 +950,14 @@ async function generateDocumentPdfBlob(documentData) {
       y -= leading;
     });
   };
+
+  if (logoImage) {
+    const watermarkWidth = isReceipt ? pageWidth * 0.72 : pageWidth * 0.56;
+    const watermarkHeight = watermarkWidth * (logoImage.height / logoImage.width);
+    const watermarkX = (pageWidth - watermarkWidth) / 2;
+    const watermarkY = (pageHeight - watermarkHeight) / 2;
+    commands.push(`q /Watermark gs ${watermarkWidth.toFixed(2)} 0 0 ${watermarkHeight.toFixed(2)} ${watermarkX.toFixed(2)} ${watermarkY.toFixed(2)} cm /Logo Do Q`);
+  }
 
   if (logoImage) {
     const logoWidth = isReceipt ? 150 : 135;
@@ -1295,7 +1310,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20260916-client-template").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20260916-wave-watermark").then((registration) => {
     registration.update();
   }).catch(() => {});
 }

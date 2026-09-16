@@ -561,6 +561,18 @@ textarea:focus {
   letter-spacing: 2px;
 }
 
+.invoice-watermark {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: min(124mm, 66%);
+  max-height: 124mm;
+  object-fit: contain;
+  opacity: 0.065;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  pointer-events: none;
+}
+
 .invoice-info-grid,
 .invoice-items-table,
 .invoice-totals,
@@ -737,6 +749,12 @@ textarea:focus {
   padding: 5mm 4mm 8mm;
   font-size: 10px;
   line-height: 1.25;
+}
+
+.receipt-sheet .invoice-watermark {
+  width: 58mm;
+  max-height: 58mm;
+  opacity: 0.045;
 }
 
 .receipt-sheet .invoice-header,

@@ -897,7 +897,7 @@ function makePdfBlob(pageWidth, pageHeight, content, logoImage) {
   addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
   addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
   if (logoImage) {
-    addObject("<< /Type /ExtGState /ca 0.07 /CA 0.07 >>");
+    addObject("<< /Type /ExtGState /ca 0.035 /CA 0.035 >>");
     addObject([
       `<< /Type /XObject /Subtype /Image /Width ${logoImage.width} /Height ${logoImage.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoImage.bytes.length} >>\nstream\n`,
       logoImage.bytes,
@@ -967,7 +967,7 @@ async function generateDocumentPdfBlob(documentData) {
   };
 
   if (logoImage) {
-    const watermarkWidth = isReceipt ? pageWidth * 0.72 : pageWidth * 0.56;
+    const watermarkWidth = isReceipt ? pageWidth * 0.68 : pageWidth * 0.46;
     const watermarkHeight = watermarkWidth * (logoImage.height / logoImage.width);
     const watermarkX = (pageWidth - watermarkWidth) / 2;
     const watermarkY = (pageHeight - watermarkHeight) / 2;
@@ -1077,11 +1077,14 @@ async function generateDocumentPdfBlob(documentData) {
     });
 
     color(0.5, 0.52, 0.54);
-    if (state.settings.businessTin) rightText(`TIN ${state.settings.businessTin}`, pageWidth / 2 + approximateWidth(`TIN ${state.settings.businessTin}`, 9) / 2, 54, 9);
+    if (state.settings.businessTin) {
+      const tinText = `TIN ${state.settings.businessTin}`;
+      text(tinText, (pageWidth - approximateWidth(tinText, 9)) / 2, 54, 9);
+    }
     color(0.04, 0.17, 0.47);
-    rightText("Powered by", pageWidth / 2 - 8, 24, 13, true);
+    text("Powered by", pageWidth / 2 - 78, 24, 13, true);
     if (logoImage) {
-      image(72, pageWidth / 2, 14);
+      image(46, pageWidth / 2 + 8, 12);
     } else {
       text("PRODAPT SOLUTION", pageWidth / 2 + 8, 24, 13, true);
     }
@@ -1446,7 +1449,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20260916-wave-a4").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20260916-wave-a4-fix").then((registration) => {
     registration.update();
   }).catch(() => {});
 }

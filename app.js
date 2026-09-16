@@ -700,9 +700,6 @@ function renderPrintPage(documentData) {
   const logo = state.settings.logoData
     ? `<img class="invoice-logo" src="${state.settings.logoData}" alt="${escapeHtml(state.settings.businessName || "Company")} logo">`
     : `<div class="invoice-logo invoice-logo-placeholder">PRODAPT<br><span>SOLUTION</span></div>`;
-  const watermark = state.settings.logoData
-    ? `<img class="invoice-watermark" src="${state.settings.logoData}" alt="">`
-    : "";
   const rows = totals.lines.map((line) => `
     <tr>
       <td>
@@ -710,7 +707,6 @@ function renderPrintPage(documentData) {
         <span>${escapeHtml(line.item?.description || "")}</span>
       </td>
       <td class="numeric">${line.quantity}</td>
-      <td>${formatMoney(line.price)}</td>
       <td>${formatMoney(line.total)}</td>
     </tr>
   `).join("");
@@ -728,33 +724,33 @@ function renderPrintPage(documentData) {
 
   document.querySelector("#printPage").innerHTML = `
     <div class="${sheetClass}">
-      ${watermark}
       <header class="invoice-header">
-        <div class="invoice-logo-wrap">${logo}</div>
-        <div class="invoice-company">
-          <h2>${label}</h2>
+        <div class="invoice-brand-block">
+          <div class="invoice-logo-wrap">${logo}</div>
           <strong>${escapeHtml(state.settings.businessName || "PRODAPT SOLUTION")}</strong>
           <p>${lineBreaks(state.settings.businessAddress || "")}</p>
           <p>${contactLine}</p>
         </div>
+        <div class="invoice-company">
+          <h2>${label}</h2>
+        </div>
       </header>
 
       <section class="invoice-info-grid">
-        <div class="invoice-bill-to">
-          <span>Bill To</span>
-          <p>${customerLines || "Customer"}</p>
-        </div>
         <div class="invoice-meta-card">
           <div><strong>${label} Number:</strong><span>${escapeHtml(documentData.number || "Draft")}</span></div>
           <div><strong>${label} Date:</strong><span>${escapeHtml(documentData.date)}</span></div>
           <div><strong>Status:</strong><span>${escapeHtml(documentData.status)}</span></div>
-          <div class="amount-due"><strong>${amountLabel} (${currencyLabel()}):</strong><span>${formatMoney(totals.total)}</span></div>
+        </div>
+        <div class="invoice-bill-to">
+          <span>Bill To</span>
+          <p>${customerLines || "Customer"}</p>
         </div>
       </section>
 
       <table class="invoice-items-table">
         <thead>
-          <tr><th>Items</th><th>Quantity</th><th>Price</th><th>Amount</th></tr>
+          <tr><th>Items</th><th>Qty</th><th>Amount</th></tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
@@ -1299,7 +1295,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20260903-records-pdf").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20260916-client-template").then((registration) => {
     registration.update();
   }).catch(() => {});
 }

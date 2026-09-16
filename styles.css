@@ -487,14 +487,14 @@ textarea:focus {
 .invoice-sheet {
   box-sizing: border-box;
   position: relative;
-  width: 216mm;
-  min-height: 279mm;
-  padding: 18mm 14mm 20mm;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 15mm 12mm 17mm;
   background: white;
-  color: #050505;
+  color: #111827;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 14px;
-  line-height: 1.32;
+  font-size: 12px;
+  line-height: 1.25;
   overflow: hidden;
 }
 
@@ -502,11 +502,12 @@ textarea:focus {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(310px, 1fr) minmax(260px, 0.9fr);
-  gap: 24px;
+  grid-template-columns: minmax(130px, 1fr) minmax(260px, 1fr);
+  gap: 18px;
   align-items: start;
-  padding: 0 0 10mm;
-  border-bottom: 1px solid #050505;
+  min-height: 54mm;
+  padding: 0 0 8mm;
+  border-bottom: 1px solid #d7dce1;
 }
 
 .invoice-brand-block {
@@ -528,14 +529,14 @@ textarea:focus {
 }
 
 .invoice-logo-wrap {
-  min-height: 36mm;
+  min-height: 32mm;
   display: flex;
   align-items: center;
 }
 
 .invoice-logo {
-  width: 52mm;
-  max-height: 34mm;
+  width: 38mm;
+  max-height: 30mm;
   object-fit: contain;
   object-position: left center;
   flex: 0 0 auto;
@@ -564,10 +565,10 @@ textarea:focus {
 .invoice-watermark {
   position: absolute;
   inset: 50% auto auto 50%;
-  width: min(124mm, 66%);
-  max-height: 124mm;
+  width: min(112mm, 58%);
+  max-height: 112mm;
   object-fit: contain;
-  opacity: 0.065;
+  opacity: 0.04;
   transform: translate(-50%, -50%);
   z-index: 0;
   pointer-events: none;
@@ -588,30 +589,47 @@ textarea:focus {
 
 .invoice-company h2 {
   margin: 0;
-  color: #2563b8;
-  font-size: 42px;
-  font-weight: 900;
+  color: #050505;
+  font-size: 36px;
+  font-weight: 400;
   line-height: 1;
   text-transform: uppercase;
 }
 
-.invoice-info-grid {
+.invoice-company strong {
   display: block;
-  padding: 5mm 0 10mm;
-  border-bottom: 1px solid #050505;
+  margin-top: 14mm;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.invoice-company p {
+  margin: 3px 0 0;
+  color: #050505;
+  font-size: 12px;
+}
+
+.invoice-info-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(240px, 0.9fr);
+  gap: 18px;
+  padding: 6mm 0 5mm;
 }
 
 .invoice-bill-to span {
   display: block;
-  margin: 6mm 0 2mm;
-  color: #050505;
-  font-size: 15px;
-  font-weight: 900;
+  margin: 0 0 2px;
+  color: #8a949e;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .invoice-bill-to p {
   margin: 0;
   color: #050505;
+  font-size: 12px;
 }
 
 .invoice-bill-to p::first-line {
@@ -620,16 +638,27 @@ textarea:focus {
 
 .invoice-meta-card {
   display: grid;
-  gap: 7px;
-  text-align: left;
+  align-content: start;
+  gap: 8px;
+  text-align: right;
 }
 
 .invoice-meta-card div {
-  display: block;
-  font-size: 15px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
 }
 
 .invoice-meta-card strong {
+  font-weight: 900;
+}
+
+.invoice-meta-card .amount-due {
+  margin-top: -2px;
+  padding: 6px 10px;
+  background: #f1f1f1;
   font-weight: 900;
 }
 
@@ -640,11 +669,11 @@ textarea:focus {
 }
 
 .invoice-items-table th {
-  padding: 4mm 0 3mm;
-  background: transparent;
+  padding: 9px 12px;
+  background: #444;
   border-bottom: 0;
-  color: #050505;
-  font-size: 15px;
+  color: #fff;
+  font-size: 12px;
   font-weight: 900;
   text-align: left;
 }
@@ -655,14 +684,15 @@ textarea:focus {
 }
 
 .invoice-items-table td {
-  border-bottom: 0;
-  padding: 2.6mm 0;
+  border-bottom: 2px solid #e5e7eb;
+  padding: 6px 12px;
   color: #050505;
   vertical-align: top;
+  font-size: 12px;
 }
 
 .invoice-items-table td:first-child {
-  width: auto;
+  width: 46%;
 }
 
 .invoice-items-table td strong {
@@ -670,7 +700,7 @@ textarea:focus {
 }
 
 .invoice-items-table td span {
-  color: #050505;
+  color: #4f5963;
 }
 
 .invoice-items-table .numeric {
@@ -678,46 +708,48 @@ textarea:focus {
 }
 
 .invoice-totals {
-  width: min(64mm, 100%);
-  margin: 8mm 0 0 auto;
-  padding-top: 4mm;
-  border-top: 1px solid #050505;
+  width: min(66mm, 100%);
+  margin: 7mm 0 0 auto;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .invoice-total-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 12mm;
+  gap: 9mm;
   align-items: center;
-  padding: 1.7mm 0;
+  padding: 4px 0;
   border-bottom: 0;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .invoice-total-row.strong {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 900;
 }
 
 .invoice-total-row.due {
-  margin-top: 1mm;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 3px solid #d8dde2;
   border-bottom: 0;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 900;
 }
 
 .invoice-notes {
-  margin-top: 10mm;
-  color: #050505;
-  font-size: 12px;
+  margin-top: 14mm;
+  color: #4f5963;
+  font-size: 11px;
   line-height: 1.35;
   white-space: pre-wrap;
 }
 
 .invoice-notes strong {
   display: block;
-  margin-bottom: 2mm;
-  color: #050505;
+  margin-bottom: 6px;
+  color: #4f5963;
   font-size: 13px;
 }
 
@@ -726,21 +758,32 @@ textarea:focus {
 }
 
 .document-footer {
-  position: static;
-  margin-top: 12mm;
+  position: absolute;
+  right: 12mm;
+  bottom: 7mm;
+  left: 12mm;
   z-index: 1;
-  color: #050505;
+  color: #8a8f94;
   font-size: 12px;
   letter-spacing: 0;
-  text-align: left;
+  text-align: center;
 }
 
-.document-footer strong {
-  display: block;
-  margin-top: 2mm;
+.powered-by {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 7px;
   color: #0b2b78;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 900;
+}
+
+.powered-logo {
+  width: 32mm;
+  max-height: 12mm;
+  object-fit: contain;
 }
 
 .receipt-sheet {
@@ -926,7 +969,7 @@ textarea:focus {
 
 @media print {
   @page {
-    size: letter;
+    size: A4;
     margin: 0;
   }
 
@@ -950,8 +993,8 @@ textarea:focus {
 
   .invoice-sheet {
     width: auto;
-    min-height: 279mm;
-    padding: 18mm 14mm 20mm;
+    min-height: 297mm;
+    padding: 15mm 12mm 17mm;
     box-shadow: none;
   }
 

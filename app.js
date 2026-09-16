@@ -700,6 +700,9 @@ function renderPrintPage(documentData) {
   const logo = state.settings.logoData
     ? `<img class="invoice-logo" src="${state.settings.logoData}" alt="${escapeHtml(state.settings.businessName || "Company")} logo">`
     : `<div class="invoice-logo invoice-logo-placeholder">PRODAPT<br><span>SOLUTION</span></div>`;
+  const poweredLogo = state.settings.logoData
+    ? `<img class="powered-logo" src="${state.settings.logoData}" alt="${escapeHtml(state.settings.businessName || "PRODAPT SOLUTION")} logo">`
+    : `<strong>PRODAPT SOLUTION</strong>`;
   const watermark = state.settings.logoData
     ? `<img class="invoice-watermark" src="${state.settings.logoData}" alt="">`
     : "";
@@ -710,6 +713,7 @@ function renderPrintPage(documentData) {
         <span>${escapeHtml(line.item?.description || "")}</span>
       </td>
       <td class="numeric">${line.quantity}</td>
+      <td>${formatMoney(line.price)}</td>
       <td>${formatMoney(line.total)}</td>
     </tr>
   `).join("");
@@ -729,32 +733,31 @@ function renderPrintPage(documentData) {
     <div class="${sheetClass}">
       ${watermark}
       <header class="invoice-header">
-        <div class="invoice-brand-block">
-          <div class="invoice-logo-wrap">${logo}</div>
+        <div class="invoice-logo-wrap">${logo}</div>
+        <div class="invoice-company">
+          <h2>${label}</h2>
           <strong>${escapeHtml(state.settings.businessName || "PRODAPT SOLUTION")}</strong>
           <p>${lineBreaks(state.settings.businessAddress || "")}</p>
           <p>${contactLine}</p>
         </div>
-        <div class="invoice-company">
-          <h2>${label}</h2>
-        </div>
       </header>
 
       <section class="invoice-info-grid">
-        <div class="invoice-meta-card">
-          <div><strong>${label} Number:</strong><span>${escapeHtml(documentData.number || "Draft")}</span></div>
-          <div><strong>${label} Date:</strong><span>${escapeHtml(documentData.date)}</span></div>
-          <div><strong>Status:</strong><span>${escapeHtml(documentData.status)}</span></div>
-        </div>
         <div class="invoice-bill-to">
           <span>Bill To</span>
           <p>${customerLines || "Customer"}</p>
+        </div>
+        <div class="invoice-meta-card">
+          <div><strong>${label} Number:</strong><span>${escapeHtml(documentData.number || "Draft")}</span></div>
+          <div><strong>${label} Date:</strong><span>${escapeHtml(documentData.date)}</span></div>
+          <div><strong>Payment Due:</strong><span>${escapeHtml(documentData.date)}</span></div>
+          <div class="amount-due"><strong>${amountLabel} (${currencyLabel()}):</strong><span>${formatMoney(totals.total)}</span></div>
         </div>
       </section>
 
       <table class="invoice-items-table">
         <thead>
-          <tr><th>Items</th><th>Qty</th><th>Amount</th></tr>
+          <tr><th>Items</th><th>Quantity</th><th>Price</th><th>Amount</th></tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
@@ -774,7 +777,7 @@ function renderPrintPage(documentData) {
 
       <footer class="document-footer">
         ${state.settings.businessTin ? `<div>TIN ${escapeHtml(state.settings.businessTin)}</div>` : ""}
-        <strong>Powered by PRODAPT SOLUTION</strong>
+        <div class="powered-by"><span>Powered by</span>${poweredLogo}</div>
       </footer>
     </div>
   `;
@@ -927,23 +930,35 @@ function makePdfBlob(pageWidth, pageHeight, content, logoImage) {
 
 async function generateDocumentPdfBlob(documentData) {
   const isReceipt = documentData.type === "receipt";
-  const pageWidth = isReceipt ? 226.77 : 612;
-  const pageHeight = isReceipt ? 900 : 792;
-  const margin = isReceipt ? 14 : 42;
+  const pageWidth = isReceipt ? 226.77 : 595.28;
+  const pageHeight = isReceipt ? 900 : 841.89;
+  const margin = isReceipt ? 14 : 26;
   const logoImage = await loadLogoForPdf();
   const totals = calculate(documentData);
   const customer = getCustomer(documentData.customerId);
   const label = documentLabel(documentData.type);
   const amountLabel = isReceipt ? "Amount Paid" : "Amount Due";
-  const maxChars = isReceipt ? 28 : 78;
+  const maxChars = isReceipt ? 28 : 76;
   const commands = [];
   let y = pageHeight - margin;
 
   const color = (r, g, b) => commands.push(`${r} ${g} ${b} rg`);
+  const stroke = (r, g, b) => commands.push(`${r} ${g} ${b} RG`);
   const text = (value, x, textY, size = 10, bold = false) => {
     commands.push(`BT /${bold ? "F2" : "F1"} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${textY.toFixed(2)} Tm ${pdfHex(value)} Tj ET`);
   };
+  const approximateWidth = (value, size = 10) => String(value || "").length * size * 0.52;
+  const rightText = (value, rightEdge, textY, size = 10, bold = false) => {
+    text(value, rightEdge - approximateWidth(value, size), textY, size, bold);
+  };
   const line = (x1, y1, x2, y2) => commands.push(`0.65 w ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S`);
+  const rect = (x, rectY, width, height) => commands.push(`${x.toFixed(2)} ${rectY.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re f`);
+  const image = (width, x, imageY) => {
+    if (!logoImage) return 0;
+    const height = width * (logoImage.height / logoImage.width);
+    commands.push(`q ${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${x.toFixed(2)} ${imageY.toFixed(2)} cm /Logo Do Q`);
+    return height;
+  };
   const addWrapped = (value, x, size = 10, bold = false, chars = maxChars, leading = size + 4) => {
     wrapText(value, chars).forEach((part) => {
       text(part, x, y, size, bold);
@@ -957,6 +972,120 @@ async function generateDocumentPdfBlob(documentData) {
     const watermarkX = (pageWidth - watermarkWidth) / 2;
     const watermarkY = (pageHeight - watermarkHeight) / 2;
     commands.push(`q /Watermark gs ${watermarkWidth.toFixed(2)} 0 0 ${watermarkHeight.toFixed(2)} ${watermarkX.toFixed(2)} ${watermarkY.toFixed(2)} cm /Logo Do Q`);
+  }
+
+  if (!isReceipt) {
+    const rightEdge = pageWidth - margin;
+    const metaLeft = rightEdge - 208;
+    const tableTop = 520;
+    const qtyX = pageWidth - margin - 260;
+    const priceRight = pageWidth - margin - 100;
+    const amountRight = pageWidth - margin - 10;
+    const denseRows = totals.lines.length > 10;
+
+    image(96, margin + 36, pageHeight - margin - 78);
+    color(0, 0, 0);
+    rightText(label.toUpperCase(), rightEdge, pageHeight - margin - 22, 34, false);
+    rightText(state.settings.businessName || "PRODAPT SOLUTION", rightEdge, pageHeight - margin - 60, 11, true);
+    String(state.settings.businessAddress || "").split(/\r?\n/).filter(Boolean).slice(0, 4).forEach((part, index) => {
+      rightText(part, rightEdge, pageHeight - margin - 77 - (index * 13), 10);
+    });
+    String(state.settings.businessPhone || "").split(/\r?\n/).filter(Boolean).slice(0, 2).forEach((part, index) => {
+      rightText(part, rightEdge, pageHeight - margin - 145 - (index * 13), 10);
+    });
+
+    stroke(0.83, 0.85, 0.87);
+    line(0, 640, pageWidth, 640);
+
+    color(0.54, 0.58, 0.62);
+    text("BILL TO", margin, 618, 10);
+    color(0, 0, 0);
+    const customerLines = [customer?.name, customer?.company, customer?.address, customer?.phone, customer?.email]
+      .filter(Boolean)
+      .flatMap((part) => String(part).split(/\r?\n/).filter(Boolean));
+    customerLines.slice(0, 6).forEach((part, index) => {
+      text(part, margin, 603 - (index * 13), index === 0 ? 10 : 9, index === 0);
+    });
+
+    const metaRows = [
+      [`${label} Number:`, documentData.number || "Draft", true],
+      [`${label} Date:`, documentData.date, false],
+      ["Payment Due:", documentData.date, false]
+    ];
+    metaRows.forEach(([name, value, bold], index) => {
+      const rowY = 616 - (index * 18);
+      rightText(name, metaLeft + 118, rowY, 10, Boolean(bold));
+      text(value, metaLeft + 128, rowY, 10);
+    });
+    color(0.94, 0.94, 0.94);
+    rect(metaLeft - 12, 551, 220, 22);
+    color(0, 0, 0);
+    rightText(`${amountLabel} (${currencyLabel()}):`, metaLeft + 118, 558, 10, true);
+    text(formatMoney(totals.total), metaLeft + 128, 558, 10, true);
+
+    color(0.25, 0.25, 0.25);
+    rect(0, tableTop - 24, pageWidth, 24);
+    color(1, 1, 1);
+    text("Items", margin, tableTop - 9, 10, true);
+    text("Quantity", qtyX, tableTop - 9, 10, true);
+    rightText("Price", priceRight, tableTop - 9, 10, true);
+    rightText("Amount", amountRight, tableTop - 9, 10, true);
+
+    color(0, 0, 0);
+    y = tableTop - 45;
+    totals.lines.slice(0, 15).forEach((itemLine) => {
+      const rowStart = y;
+      const name = itemLine.item?.name || "Item";
+      const description = itemLine.item?.description || "";
+      const itemText = denseRows && description ? `${name} - ${description}` : name;
+      text(itemText, margin, rowStart, denseRows ? 8 : 9, true);
+      if (!denseRows && description) text(description, margin, rowStart - 12, 8);
+      text(String(itemLine.quantity), qtyX + 20, rowStart, denseRows ? 8 : 9);
+      rightText(formatMoney(itemLine.price), priceRight, rowStart, denseRows ? 8 : 9);
+      rightText(formatMoney(itemLine.total), amountRight, rowStart, denseRows ? 8 : 9);
+      stroke(0.9, 0.91, 0.92);
+      line(0, rowStart - (denseRows ? 10 : 17), pageWidth, rowStart - (denseRows ? 10 : 17));
+      y -= denseRows ? 18 : 26;
+    });
+
+    y -= 10;
+    const totalsLeft = pageWidth - margin - 190;
+    [
+      ["Subtotal:", totals.subtotal, false],
+      ["Discount:", totals.discount, false],
+      ["Tax:", totals.tax, false],
+      ["Total:", totals.total, true],
+      [`${amountLabel} (${currencyLabel()}):`, totals.total, true]
+    ].forEach(([name, amount, bold], index) => {
+      if (index === 4) {
+        stroke(0.85, 0.87, 0.88);
+        commands.push(`2 w ${totalsLeft.toFixed(2)} ${(y + 9).toFixed(2)} m ${amountRight.toFixed(2)} ${(y + 9).toFixed(2)} l S`);
+        y -= 8;
+      }
+      rightText(name, totalsLeft + 95, y, 10, Boolean(bold));
+      rightText(formatMoney(amount), amountRight, y, 10, Boolean(bold));
+      y -= index === 3 ? 20 : 15;
+    });
+
+    y = Math.max(88, Math.min(y - 10, 205));
+    color(0.3, 0.34, 0.37);
+    text("Notes / Terms", margin, y, 10, true);
+    y -= 16;
+    wrapText(documentData.notes || state.settings.businessPayment || "", 96).slice(0, 7).forEach((part) => {
+      text(part, margin, y, 8);
+      y -= 12;
+    });
+
+    color(0.5, 0.52, 0.54);
+    if (state.settings.businessTin) rightText(`TIN ${state.settings.businessTin}`, pageWidth / 2 + approximateWidth(`TIN ${state.settings.businessTin}`, 9) / 2, 54, 9);
+    color(0.04, 0.17, 0.47);
+    rightText("Powered by", pageWidth / 2 - 8, 24, 13, true);
+    if (logoImage) {
+      image(72, pageWidth / 2, 14);
+    } else {
+      text("PRODAPT SOLUTION", pageWidth / 2 + 8, 24, 13, true);
+    }
+    return makePdfBlob(pageWidth, pageHeight, commands.join("\n"), logoImage);
   }
 
   if (logoImage) {
@@ -994,6 +1123,7 @@ async function generateDocumentPdfBlob(documentData) {
   y -= isReceipt ? 13 : 18;
   text("Items", margin, y, isReceipt ? 9 : 10, true);
   text("Qty", pageWidth - margin - (isReceipt ? 56 : 150), y, isReceipt ? 9 : 10, true);
+  if (isReceipt) text("Price", pageWidth - margin - 88, y, 9, true);
   text("Amount", pageWidth - margin - (isReceipt ? 38 : 58), y, isReceipt ? 9 : 10, true);
   y -= isReceipt ? 12 : 16;
 
@@ -1001,6 +1131,7 @@ async function generateDocumentPdfBlob(documentData) {
     addWrapped(itemLine.item?.name || "Item", margin, isReceipt ? 8 : 9, true, isReceipt ? 20 : 48, isReceipt ? 10 : 12);
     if (itemLine.item?.description) addWrapped(itemLine.item.description, margin, isReceipt ? 7 : 8, false, isReceipt ? 24 : 64, isReceipt ? 9 : 11);
     text(String(itemLine.quantity), pageWidth - margin - (isReceipt ? 56 : 150), y + (isReceipt ? 10 : 13), isReceipt ? 8 : 9);
+    if (isReceipt) text(formatMoney(itemLine.price), pageWidth - margin - 94, y + 10, 8);
     text(formatMoney(itemLine.total), pageWidth - margin - (isReceipt ? 52 : 80), y + (isReceipt ? 10 : 13), isReceipt ? 8 : 9);
     y -= isReceipt ? 4 : 6;
   });
@@ -1026,7 +1157,12 @@ async function generateDocumentPdfBlob(documentData) {
   y -= isReceipt ? 10 : 16;
   if (state.settings.businessTin) addWrapped(`TIN ${state.settings.businessTin}`, margin, isReceipt ? 7 : 8);
   color(0.04, 0.17, 0.47);
-  addWrapped("Powered by PRODAPT SOLUTION", margin, isReceipt ? 8 : 12, true);
+  addWrapped("Powered by", margin, isReceipt ? 8 : 12, true);
+  if (logoImage) {
+    image(isReceipt ? 72 : 90, margin, Math.max(8, y - 18));
+  } else {
+    addWrapped("PRODAPT SOLUTION", margin, isReceipt ? 8 : 12, true);
+  }
 
   return makePdfBlob(pageWidth, pageHeight, commands.join("\n"), logoImage);
 }
@@ -1310,7 +1446,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20260916-wave-watermark").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20260916-wave-a4").then((registration) => {
     registration.update();
   }).catch(() => {});
 }

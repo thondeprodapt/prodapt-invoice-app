@@ -1,12 +1,12 @@
-const cacheName = "prodapt-invoice-studio-v17";
+const cacheName = "prodapt-invoice-studio-v18";
 const files = [
   "./",
   "./index.html",
   "./items-csv.html",
-  "./styles.css?v=20260916-wave-watermark",
-  "./app.js?v=20260916-wave-watermark",
-  "./customers-import.js?v=20260916-wave-watermark",
-  "./wave-items.js?v=20260916-wave-watermark",
+  "./styles.css?v=20260916-wave-a4",
+  "./app.js?v=20260916-wave-a4",
+  "./customers-import.js?v=20260916-wave-a4",
+  "./wave-items.js?v=20260916-wave-a4",
   "./wave-products-import.csv",
   "./prodapt-logo.png",
   "./icon-192.png",

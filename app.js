@@ -695,8 +695,12 @@ function renderPrintPage(documentData) {
   const totals = calculate(documentData);
   const customer = getCustomer(documentData.customerId);
   const label = documentLabel(documentData.type);
-  const amountLabel = documentData.type === "receipt" ? "Amount Paid" : "Amount Due";
-  const sheetClass = documentData.type === "receipt" ? "invoice-sheet receipt-sheet" : "invoice-sheet";
+  const isReceipt = documentData.type === "receipt";
+  const amountLabel = isReceipt ? "Amount Paid" : "Amount Due";
+  const sheetClass = isReceipt ? "invoice-sheet receipt-sheet" : "invoice-sheet";
+  const notesText = isReceipt
+    ? String(documentData.notes || "").trim()
+    : documentData.notes || state.settings.businessPayment || "";
   const logo = state.settings.logoData
     ? `<img class="invoice-logo" src="${state.settings.logoData}" alt="${escapeHtml(state.settings.businessName || "Company")} logo">`
     : `<div class="invoice-logo invoice-logo-placeholder">PRODAPT<br><span>SOLUTION</span></div>`;
@@ -770,10 +774,12 @@ function renderPrintPage(documentData) {
         <div class="invoice-total-row due"><strong>${amountLabel} (${currencyLabel()}):</strong><span>${formatMoney(totals.total)}</span></div>
       </section>
 
-      <section class="invoice-notes">
-        <strong>Notes / Terms</strong>
-        <p>${lineBreaks(documentData.notes || state.settings.businessPayment || "")}</p>
-      </section>
+      ${notesText ? `
+        <section class="invoice-notes">
+          <strong>Notes / Terms</strong>
+          <p>${lineBreaks(notesText)}</p>
+        </section>
+      ` : ""}
 
       <footer class="document-footer">
         ${state.settings.businessTin ? `<div>TIN ${escapeHtml(state.settings.businessTin)}</div>` : ""}
@@ -945,13 +951,14 @@ async function generateDocumentPdfBlob(documentData) {
   const color = (r, g, b) => commands.push(`${r} ${g} ${b} rg`);
   const stroke = (r, g, b) => commands.push(`${r} ${g} ${b} RG`);
   const text = (value, x, textY, size = 10, bold = false) => {
-    commands.push(`BT /${bold ? "F2" : "F1"} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${textY.toFixed(2)} Tm ${pdfHex(value)} Tj ET`);
+    commands.push(`BT /${bold || isReceipt ? "F2" : "F1"} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${textY.toFixed(2)} Tm ${pdfHex(value)} Tj ET`);
   };
   const approximateWidth = (value, size = 10) => String(value || "").length * size * 0.52;
   const rightText = (value, rightEdge, textY, size = 10, bold = false) => {
-    text(value, rightEdge - approximateWidth(value, size), textY, size, bold);
+    const width = approximateWidth(value, size) * (isReceipt ? 1.08 : 1);
+    text(value, rightEdge - width, textY, size, bold);
   };
-  const line = (x1, y1, x2, y2) => commands.push(`0.65 w ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S`);
+  const line = (x1, y1, x2, y2) => commands.push(`${isReceipt ? 1.1 : 0.65} w ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S`);
   const rect = (x, rectY, width, height) => commands.push(`${x.toFixed(2)} ${rectY.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re f`);
   const image = (width, x, imageY) => {
     if (!logoImage) return 0;
@@ -1099,7 +1106,7 @@ async function generateDocumentPdfBlob(documentData) {
     y -= logoHeight + (isReceipt ? 12 : 6);
   }
 
-  color(0.15, 0.39, 0.72);
+  color(0, 0, 0);
   text(label.toUpperCase(), isReceipt ? margin : pageWidth - margin - 170, isReceipt ? y : pageHeight - margin - 10, isReceipt ? 18 : 28, true);
   color(0, 0, 0);
   if (isReceipt) y -= 24;
@@ -1124,18 +1131,32 @@ async function generateDocumentPdfBlob(documentData) {
 
   line(margin, y, pageWidth - margin, y);
   y -= isReceipt ? 13 : 18;
+  const receiptRightEdge = pageWidth - margin - 2;
+  const receiptQtyRight = 110;
+  const receiptPriceRight = 160;
   text("Items", margin, y, isReceipt ? 9 : 10, true);
-  text("Qty", pageWidth - margin - (isReceipt ? 56 : 150), y, isReceipt ? 9 : 10, true);
-  if (isReceipt) text("Price", pageWidth - margin - 88, y, 9, true);
-  text("Amount", pageWidth - margin - (isReceipt ? 38 : 58), y, isReceipt ? 9 : 10, true);
+  if (isReceipt) {
+    rightText("Qty", receiptQtyRight, y, 8, true);
+    rightText("Price", receiptPriceRight, y, 8, true);
+    rightText("Amount", receiptRightEdge, y, 8, true);
+  } else {
+    text("Qty", pageWidth - margin - 150, y, 10, true);
+    text("Amount", pageWidth - margin - 58, y, 10, true);
+  }
   y -= isReceipt ? 12 : 16;
 
   totals.lines.forEach((itemLine) => {
-    addWrapped(itemLine.item?.name || "Item", margin, isReceipt ? 8 : 9, true, isReceipt ? 20 : 48, isReceipt ? 10 : 12);
+    const rowTop = y;
+    addWrapped(itemLine.item?.name || "Item", margin, isReceipt ? 8 : 9, true, isReceipt ? 15 : 48, isReceipt ? 10 : 12);
     if (itemLine.item?.description) addWrapped(itemLine.item.description, margin, isReceipt ? 7 : 8, false, isReceipt ? 24 : 64, isReceipt ? 9 : 11);
-    text(String(itemLine.quantity), pageWidth - margin - (isReceipt ? 56 : 150), y + (isReceipt ? 10 : 13), isReceipt ? 8 : 9);
-    if (isReceipt) text(formatMoney(itemLine.price), pageWidth - margin - 94, y + 10, 8);
-    text(formatMoney(itemLine.total), pageWidth - margin - (isReceipt ? 52 : 80), y + (isReceipt ? 10 : 13), isReceipt ? 8 : 9);
+    if (isReceipt) {
+      rightText(String(itemLine.quantity), receiptQtyRight, rowTop, 8, true);
+      rightText(formatMoney(itemLine.price), receiptPriceRight, rowTop, 8, true);
+      rightText(formatMoney(itemLine.total), receiptRightEdge, rowTop, 8, true);
+    } else {
+      text(String(itemLine.quantity), pageWidth - margin - 150, y + 13, 9);
+      text(formatMoney(itemLine.total), pageWidth - margin - 80, y + 13, 9);
+    }
     y -= isReceipt ? 4 : 6;
   });
 
@@ -1149,17 +1170,27 @@ async function generateDocumentPdfBlob(documentData) {
     ["Total", totals.total],
     [amountLabel, totals.total]
   ].forEach(([name, amount], index) => {
-    text(`${name}:`, pageWidth - margin - (isReceipt ? 94 : 180), y, isReceipt ? 9 : 10, index >= 3);
-    text(formatMoney(amount), pageWidth - margin - (isReceipt ? 52 : 80), y, isReceipt ? 9 : 10, index >= 3);
+    if (isReceipt) {
+      rightText(`${name}:`, 146, y, 9, true);
+      rightText(formatMoney(amount), receiptRightEdge, y, 9, true);
+    } else {
+      text(`${name}:`, pageWidth - margin - 180, y, 10, index >= 3);
+      text(formatMoney(amount), pageWidth - margin - 80, y, 10, index >= 3);
+    }
     y -= isReceipt ? 13 : 16;
   });
 
-  y -= isReceipt ? 5 : 12;
-  addWrapped("Notes / Terms", margin, isReceipt ? 8 : 9, true);
-  addWrapped(documentData.notes || state.settings.businessPayment || "", margin, isReceipt ? 7 : 8, false, maxChars);
+  const receiptNotes = isReceipt
+    ? String(documentData.notes || "").trim()
+    : documentData.notes || state.settings.businessPayment || "";
+  if (receiptNotes) {
+    y -= isReceipt ? 5 : 12;
+    addWrapped("Notes / Terms", margin, isReceipt ? 8 : 9, true);
+    addWrapped(receiptNotes, margin, isReceipt ? 7 : 8, false, maxChars);
+  }
   y -= isReceipt ? 10 : 16;
   if (state.settings.businessTin) addWrapped(`TIN ${state.settings.businessTin}`, margin, isReceipt ? 7 : 8);
-  color(0.04, 0.17, 0.47);
+  color(0, 0, 0);
   addWrapped("Powered by", margin, isReceipt ? 8 : 12, true);
   if (logoImage) {
     image(isReceipt ? 72 : 90, margin, Math.max(8, y - 18));
@@ -1449,7 +1480,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20260916-wave-a4-fix").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20260917-receipt-print-fix").then((registration) => {
     registration.update();
   }).catch(() => {});
 }

@@ -568,7 +568,7 @@ textarea:focus {
   width: min(112mm, 58%);
   max-height: 112mm;
   object-fit: contain;
-  opacity: 0.04;
+  opacity: 0.09;
   transform: translate(-50%, -50%);
   z-index: 0;
   pointer-events: none;
@@ -1041,6 +1041,12 @@ textarea:focus {
     min-height: 297mm;
     padding: 15mm 12mm 17mm;
     box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .invoice-sheet .invoice-watermark {
+    opacity: 0.11;
   }
 
   .receipt-sheet {

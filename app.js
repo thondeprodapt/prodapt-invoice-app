@@ -817,27 +817,42 @@ function documentFileName(documentData) {
 
 function pdfHex(value) {
   const text = String(value ?? "");
-  let hex = "FEFF";
-  for (let index = 0; index < text.length; index += 1) {
-    hex += text.charCodeAt(index).toString(16).padStart(4, "0");
+  const winAnsi = {
+    0x2018: 0x91,
+    0x2019: 0x92,
+    0x201c: 0x93,
+    0x201d: 0x94,
+    0x2022: 0x95,
+    0x2013: 0x96,
+    0x2014: 0x97,
+    0x2026: 0x85
+  };
+  let hex = "";
+  for (const character of text) {
+    const codePoint = character.codePointAt(0);
+    const byte = codePoint <= 0xff ? codePoint : winAnsi[codePoint] ?? 0x3f;
+    hex += byte.toString(16).padStart(2, "0");
   }
   return `<${hex}>`;
 }
 
 function wrapText(value, maxChars) {
-  const words = String(value || "").replace(/\r/g, "").split(/\s+/);
   const lines = [];
-  let line = "";
-  words.forEach((word) => {
-    const next = line ? `${line} ${word}` : word;
-    if (next.length > maxChars && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = next;
-    }
+  String(value || "").replace(/\r/g, "").split("\n").forEach((paragraph) => {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    let line = "";
+    words.forEach((word) => {
+      const next = line ? `${line} ${word}` : word;
+      if (next.length > maxChars && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = next;
+      }
+    });
+    if (line) lines.push(line);
+    if (!words.length) lines.push("");
   });
-  if (line) lines.push(line);
   return lines.length ? lines : [""];
 }
 
@@ -900,10 +915,10 @@ function makePdfBlob(pageWidth, pageHeight, content, logoImage) {
   const contentId = logoImage ? 8 : 6;
   const imageResources = imageId ? ` /XObject << /Logo ${imageId} 0 R >> /ExtGState << /Watermark ${gStateId} 0 R >>` : "";
   addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >>${imageResources} >> /Contents ${contentId} 0 R >>`);
-  addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
-  addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
+  addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+  addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
   if (logoImage) {
-    addObject("<< /Type /ExtGState /ca 0.035 /CA 0.035 >>");
+    addObject("<< /Type /ExtGState /ca 0.09 /CA 0.09 >>");
     addObject([
       `<< /Type /XObject /Subtype /Image /Width ${logoImage.width} /Height ${logoImage.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoImage.bytes.length} >>\nstream\n`,
       logoImage.bytes,
@@ -953,9 +968,18 @@ async function generateDocumentPdfBlob(documentData) {
   const text = (value, x, textY, size = 10, bold = false) => {
     commands.push(`BT /${bold || isReceipt ? "F2" : "F1"} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${textY.toFixed(2)} Tm ${pdfHex(value)} Tj ET`);
   };
-  const approximateWidth = (value, size = 10) => String(value || "").length * size * 0.52;
+  const approximateWidth = (value, size = 10, bold = false) => [...String(value || "")].reduce((width, character) => {
+    let factor = 0.54;
+    if (character === " ") factor = 0.28;
+    else if (/[ilI.,:;!'|]/.test(character)) factor = 0.28;
+    else if (/[MW@%]/.test(character)) factor = 0.9;
+    else if (/[A-Z]/.test(character)) factor = 0.7;
+    else if (/[mw]/.test(character)) factor = 0.76;
+    else if (/[0-9$]/.test(character)) factor = 0.56;
+    return width + ((factor + (bold ? 0.015 : 0)) * size);
+  }, 0);
   const rightText = (value, rightEdge, textY, size = 10, bold = false) => {
-    const width = approximateWidth(value, size) * (isReceipt ? 1.08 : 1);
+    const width = approximateWidth(value, size, bold) * (isReceipt ? 1.03 : 1);
     text(value, rightEdge - width, textY, size, bold);
   };
   const line = (x1, y1, x2, y2) => commands.push(`${isReceipt ? 1.1 : 0.65} w ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S`);
@@ -992,7 +1016,7 @@ async function generateDocumentPdfBlob(documentData) {
 
     image(96, margin + 36, pageHeight - margin - 78);
     color(0, 0, 0);
-    rightText(label.toUpperCase(), rightEdge, pageHeight - margin - 22, 34, false);
+    rightText(label.toUpperCase(), rightEdge, pageHeight - margin - 22, 32, true);
     rightText(state.settings.businessName || "PRODAPT SOLUTION", rightEdge, pageHeight - margin - 60, 11, true);
     String(state.settings.businessAddress || "").split(/\r?\n/).filter(Boolean).slice(0, 4).forEach((part, index) => {
       rightText(part, rightEdge, pageHeight - margin - 77 - (index * 13), 10);
@@ -1000,9 +1024,12 @@ async function generateDocumentPdfBlob(documentData) {
     String(state.settings.businessPhone || "").split(/\r?\n/).filter(Boolean).slice(0, 2).forEach((part, index) => {
       rightText(part, rightEdge, pageHeight - margin - 145 - (index * 13), 10);
     });
+    if (state.settings.businessEmail) {
+      rightText(state.settings.businessEmail, rightEdge, pageHeight - margin - 171, 9);
+    }
 
     stroke(0.83, 0.85, 0.87);
-    line(0, 640, pageWidth, 640);
+    line(0, 632, pageWidth, 632);
 
     color(0.54, 0.58, 0.62);
     text("BILL TO", margin, 618, 10);
@@ -1011,7 +1038,7 @@ async function generateDocumentPdfBlob(documentData) {
       .filter(Boolean)
       .flatMap((part) => String(part).split(/\r?\n/).filter(Boolean));
     customerLines.slice(0, 6).forEach((part, index) => {
-      text(part, margin, 603 - (index * 13), index === 0 ? 10 : 9, index === 0);
+      text(part, margin, 603 - (index * 14), index === 0 ? 11 : 10, index === 0);
     });
 
     const metaRows = [
@@ -1045,16 +1072,17 @@ async function generateDocumentPdfBlob(documentData) {
       const name = itemLine.item?.name || "Item";
       const description = itemLine.item?.description || "";
       const itemText = denseRows && description ? `${name} - ${description}` : name;
-      text(itemText, margin, rowStart, denseRows ? 8 : 9, true);
-      if (!denseRows && description) text(description, margin, rowStart - 12, 8);
-      text(String(itemLine.quantity), qtyX + 20, rowStart, denseRows ? 8 : 9);
-      rightText(formatMoney(itemLine.price), priceRight, rowStart, denseRows ? 8 : 9);
-      rightText(formatMoney(itemLine.total), amountRight, rowStart, denseRows ? 8 : 9);
+      text(itemText, margin, rowStart, denseRows ? 8 : 10, true);
+      if (!denseRows && description) text(description, margin, rowStart - 13, 9);
+      text(String(itemLine.quantity), qtyX + 20, rowStart, denseRows ? 8 : 10);
+      rightText(formatMoney(itemLine.price), priceRight, rowStart, denseRows ? 8 : 10);
+      rightText(formatMoney(itemLine.total), amountRight, rowStart, denseRows ? 8 : 10);
       stroke(0.9, 0.91, 0.92);
       line(0, rowStart - (denseRows ? 10 : 17), pageWidth, rowStart - (denseRows ? 10 : 17));
       y -= denseRows ? 18 : 26;
     });
 
+    const rowsBottomY = y;
     y -= 10;
     const totalsLeft = pageWidth - margin - 190;
     [
@@ -1069,18 +1097,18 @@ async function generateDocumentPdfBlob(documentData) {
         commands.push(`2 w ${totalsLeft.toFixed(2)} ${(y + 9).toFixed(2)} m ${amountRight.toFixed(2)} ${(y + 9).toFixed(2)} l S`);
         y -= 8;
       }
-      rightText(name, totalsLeft + 95, y, 10, Boolean(bold));
-      rightText(formatMoney(amount), amountRight, y, 10, Boolean(bold));
+      rightText(name, totalsLeft + 95, y, 11, Boolean(bold));
+      rightText(formatMoney(amount), amountRight, y, 11, Boolean(bold));
       y -= index === 3 ? 20 : 15;
     });
 
-    y = Math.max(88, Math.min(y - 10, 205));
+    y = Math.max(88, Math.min(rowsBottomY - 10, 205));
     color(0.3, 0.34, 0.37);
-    text("Notes / Terms", margin, y, 10, true);
+    text("Notes / Terms", margin, y, 11, true);
     y -= 16;
     wrapText(documentData.notes || state.settings.businessPayment || "", 96).slice(0, 7).forEach((part) => {
-      text(part, margin, y, 8);
-      y -= 12;
+      text(part, margin, y, 9);
+      y -= 13;
     });
 
     color(0.5, 0.52, 0.54);
@@ -1264,10 +1292,16 @@ async function downloadCurrentDocument() {
   downloadFile(file);
 }
 
-function printCurrentDocument() {
+async function printCurrentDocument() {
   const documentData = persistCurrentDocument();
   if (!documentData) return;
   renderAll();
+  if (documentData.type !== "receipt") {
+    const file = await createDocumentPdfFile(documentData);
+    downloadFile(file);
+    alert(`PDF downloaded as ${file.name}. Open the PDF and choose Print. The customer copy will not contain the app address.`);
+    return;
+  }
   renderPrintPage(documentData);
   window.print();
 }
@@ -1480,7 +1514,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20260917-receipt-print-fix").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20260918-pdf-readability").then((registration) => {
     registration.update();
   }).catch(() => {});
 }

@@ -3,39 +3,59 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#0f766e">
+    <meta name="theme-color" content="#2d63aa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="PRODAPT">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="format-detection" content="telephone=no,email=no,address=no">
     <title>PRODAPT Invoice Studio</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260903-app-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20260903-app-icon">
-    <link rel="stylesheet" href="styles.css?v=20260918-pdf-readability">
+    <link rel="stylesheet" href="styles.css?v=20261007-workspace">
   </head>
   <body>
+    <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="icon-layout" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol>
+      <symbol id="icon-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 12v6m-3-3h6"/></symbol>
+      <symbol id="icon-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+      <symbol id="icon-box" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5ZM3 8v9l9 5 9-5V8M12 13v9"/></symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.9 1.9-.06-.06A1.7 1.7 0 0 0 16 18.4l-.09.04a1.7 1.7 0 0 0-1.06 1.57V20h-2.7v-.09a1.7 1.7 0 0 0-1.06-1.57L11 18.3a1.7 1.7 0 0 0-1.87.34l-.07.06-1.9-1.9.06-.06A1.7 1.7 0 0 0 7.6 15l-.04-.09A1.7 1.7 0 0 0 5.99 13.85H5.9v-2.7h.09a1.7 1.7 0 0 0 1.57-1.06L7.6 10a1.7 1.7 0 0 0-.34-1.88L7.2 8.06l1.9-1.9.06.06A1.7 1.7 0 0 0 11 6.6l.09-.04a1.7 1.7 0 0 0 1.06-1.57V4.9h2.7v.09a1.7 1.7 0 0 0 1.06 1.57L16 6.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 1.9 1.9-.06.06A1.7 1.7 0 0 0 19.4 10l.04.09A1.7 1.7 0 0 0 21 11.15h.1v2.7H21a1.7 1.7 0 0 0-1.56 1.06Z"/></symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
+      <symbol id="icon-share" viewBox="0 0 24 24"><path d="M12 16V3m-4 4 4-4 4 4M5 13v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/></symbol>
+      <symbol id="icon-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+      <symbol id="icon-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/></symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    </svg>
     <div class="app-shell">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">Invoice Studio</p>
-          <h1>PRODAPT</h1>
+        <div class="brand-lockup">
+          <img class="app-logo" src="prodapt-logo.png" alt="Prodapt Solution logo">
+          <div>
+            <h1>PRODAPT</h1>
+            <p class="eyebrow">Invoice Studio</p>
+          </div>
         </div>
         <div class="topbar-actions">
           <button class="icon-button" id="printDocument" title="Download PDF" aria-label="Download PDF">
-            <span aria-hidden="true">PDF</span>
+            <svg class="icon"><use href="#icon-download"></use></svg>
           </button>
           <button class="icon-button" id="shareDocument" title="Share PDF" aria-label="Share PDF">
-            <span aria-hidden="true">Share</span>
+            <svg class="icon"><use href="#icon-share"></use></svg>
           </button>
         </div>
       </header>
 
+      <nav class="tabbar" aria-label="Main navigation">
+        <button class="tab active" data-view="dashboard"><svg class="icon"><use href="#icon-layout"></use></svg><span>Dashboard</span></button>
+        <button class="tab" data-view="builder"><svg class="icon"><use href="#icon-file"></use></svg><span>Create</span></button>
+        <button class="tab" data-view="customers"><svg class="icon"><use href="#icon-users"></use></svg><span>Customers</span></button>
+        <button class="tab" data-view="items"><svg class="icon"><use href="#icon-box"></use></svg><span>Items</span></button>
+        <button class="tab" data-view="settings"><svg class="icon"><use href="#icon-settings"></use></svg><span>Settings</span></button>
+      </nav>
+
       <main>
-        <nav class="tabbar" aria-label="Main navigation">
-          <button class="tab active" data-view="dashboard">Dashboard</button>
-          <button class="tab" data-view="builder">Create</button>
-          <button class="tab" data-view="customers">Customers</button>
-          <button class="tab" data-view="items">Products</button>
-          <button class="tab" data-view="settings">Settings</button>
-        </nav>
 
         <section class="view active" id="dashboardView">
           <div class="metrics-grid">
@@ -83,8 +103,9 @@
 
           <div class="section-heading">
             <h2>Documents</h2>
-            <button class="secondary-button" id="newDocumentFromDashboard">New</button>
+            <button class="primary-button" id="newDocumentFromDashboard"><svg class="icon"><use href="#icon-plus"></use></svg>New</button>
           </div>
+          <label class="search-field"><svg class="icon"><use href="#icon-search"></use></svg><input type="search" id="documentSearch" placeholder="Search number, customer or status" aria-label="Search documents"></label>
           <div class="document-list" id="documentList"></div>
         </section>
 
@@ -109,13 +130,14 @@
               <div class="form-row">
                 <label>
                   Customer
+                  <span class="search-field"><svg class="icon"><use href="#icon-search"></use></svg><input type="search" id="docCustomerSearch" placeholder="Search customers" aria-label="Search customers for document"></span>
                   <select id="docCustomer"></select>
                 </label>
               </div>
 
               <div class="section-heading compact">
-                <h2>Products</h2>
-                <button type="button" class="secondary-button" id="addLine">Add line</button>
+                <h2>Items</h2>
+                <button type="button" class="secondary-button" id="addLine"><svg class="icon"><use href="#icon-plus"></use></svg>Add item</button>
               </div>
               <div class="line-items" id="lineItems"></div>
 
@@ -173,11 +195,11 @@
                 <div class="profit-total"><dt>Private profit</dt><dd id="totalProfit">$0.00</dd></div>
               </dl>
               <div class="share-stack">
-                <button type="button" class="primary-button" id="previewPrint">Download PDF</button>
+                <button type="button" class="primary-button" id="sharePdfDocument"><svg class="icon"><use href="#icon-share"></use></svg>Share PDF</button>
+                <button type="button" class="secondary-button" id="whatsappDocument"><svg class="icon"><use href="#icon-send"></use></svg>WhatsApp PDF</button>
+                <button type="button" class="secondary-button" id="emailDocument"><svg class="icon"><use href="#icon-mail"></use></svg>Email PDF</button>
+                <button type="button" class="secondary-button" id="previewPrint"><svg class="icon"><use href="#icon-download"></use></svg>Download PDF</button>
                 <button type="button" class="secondary-button" id="printReceipt">Print</button>
-                <button type="button" class="secondary-button" id="sharePdfDocument">Share PDF</button>
-                <button type="button" class="secondary-button" id="emailDocument">Email</button>
-                <button type="button" class="secondary-button" id="whatsappDocument">WhatsApp PDF</button>
               </div>
             </aside>
           </div>
@@ -199,6 +221,7 @@
                 <h2>Customer list</h2>
                 <span class="item-count" id="customerCount">0 customers loaded</span>
               </div>
+              <label class="search-field"><svg class="icon"><use href="#icon-search"></use></svg><input type="search" id="customerSearch" placeholder="Search name, company, phone or email" aria-label="Search customers"></label>
               <div class="record-list" id="customerList"></div>
             </div>
           </div>
@@ -207,20 +230,21 @@
         <section class="view" id="itemsView">
           <div class="editor-layout">
             <form class="panel" id="itemForm">
-              <h2>Add product</h2>
+              <h2>Add item</h2>
               <label>Name<input id="itemName" required></label>
               <label>Description<textarea id="itemDescription" rows="3"></textarea></label>
               <div class="form-row split">
                 <label>Selling price<input id="itemPrice" type="number" min="0" step="0.01" required></label>
                 <label>Cost price<input id="itemCost" type="number" min="0" step="0.01" required></label>
               </div>
-              <button class="primary-button" type="submit">Save product</button>
+              <button class="primary-button" type="submit">Save item</button>
             </form>
             <div class="panel">
               <div class="section-heading compact">
-                <h2>Product list</h2>
-                <span class="item-count" id="itemCount">0 products loaded</span>
+                <h2>Items</h2>
+                <span class="item-count" id="itemCount">0 items loaded</span>
               </div>
+              <label class="search-field"><svg class="icon"><use href="#icon-search"></use></svg><input type="search" id="itemSearch" placeholder="Search name or description" aria-label="Search items"></label>
               <div class="csv-actions">
                 <a class="secondary-link" href="items-csv.html" target="_blank" rel="noopener">View CSV product list</a>
                 <a class="secondary-link" href="wave-products-import.csv" download>Download product CSV</a>
@@ -229,6 +253,7 @@
                 <input id="itemImport" type="file" accept=".csv,text/csv">
               </label>
               <div class="record-list" id="itemList"></div>
+              <button type="button" class="secondary-button load-more" id="showMoreItems" hidden>Show more</button>
             </div>
           </div>
         </section>
@@ -261,10 +286,12 @@
       </main>
     </div>
 
+    <div id="appNotice" class="app-notice" role="status" hidden></div>
+
     <section class="print-page" id="printPage" aria-hidden="true"></section>
 
-    <script src="customers-import.js?v=20260918-pdf-readability"></script>
-    <script src="wave-items.js?v=20260918-pdf-readability"></script>
-    <script src="app.js?v=20260918-pdf-readability"></script>
+    <script src="customers-import.js?v=20261007-workspace"></script>
+    <script src="wave-items.js?v=20261007-workspace"></script>
+    <script src="app.js?v=20261007-workspace"></script>
   </body>
 </html>

@@ -44,6 +44,8 @@ applyBusinessDetailsMigration();
 applyImportedCustomersMigration();
 applyWaveItemsMigration();
 let draft = emptyDocument();
+let visibleItemCount = 50;
+let pdfLogoCache = { source: null, promise: null };
 
 function loadState() {
   try {
@@ -436,32 +438,59 @@ function calculate(document) {
 function switchView(view) {
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === view);
+    if (tab.dataset.view === view) tab.setAttribute("aria-current", "page");
+    else tab.removeAttribute("aria-current");
   });
   document.querySelectorAll(".view").forEach((section) => {
     section.classList.toggle("active", section.id === `${view}View`);
   });
+  window.scrollTo(0, 0);
+}
+
+function searchMatches(query, ...values) {
+  const term = String(query || "").trim().toLocaleLowerCase();
+  return !term || values.some((value) => String(value || "").toLocaleLowerCase().includes(term));
 }
 
 function fillSelects() {
   const customerSelect = document.querySelector("#docCustomer");
-  customerSelect.innerHTML = state.customers
-    .map((customer) => `<option value="${customer.id}">${escapeHtml(customer.name)}</option>`)
-    .join("");
+  const query = document.querySelector("#docCustomerSearch").value;
+  const matching = state.customers.filter((customer) => searchMatches(query, customer.name, customer.company, customer.phone, customer.email));
+  const current = state.customers.find((customer) => customer.id === draft.customerId);
+  const options = current && !matching.some((customer) => customer.id === current.id)
+    ? [current, ...matching]
+    : matching;
+  customerSelect.innerHTML = options.map((customer) =>
+    `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`
+  ).join("") || `<option value="" disabled>No matching customers</option>`;
+  customerSelect.value = draft.customerId;
+}
+
+function itemSelectOptions(line, query = "") {
+  const matching = (query
+    ? state.items.filter((item) => searchMatches(query, item.name, item.description))
+    : state.items).slice(0, query ? 60 : 40);
+  const current = getItem(line.itemId);
+  const options = current && !matching.some((item) => item.id === current.id)
+    ? [current, ...matching]
+    : matching;
+  return options.map((item) => {
+    const label = itemOptionLabel(item);
+    const shortLabel = label.length > 130 ? `${label.slice(0, 127)}...` : label;
+    return `<option value="${escapeHtml(item.id)}" ${item.id === line.itemId ? "selected" : ""}>${escapeHtml(shortLabel)}</option>`;
+  }).join("") || `<option value="" disabled>No matching items</option>`;
 }
 
 function renderLineItems() {
   const lineItems = document.querySelector("#lineItems");
   lineItems.innerHTML = draft.lines.map((line, index) => {
     const selectedItem = getItem(line.itemId);
-    const itemOptions = state.items.map((item) => {
-      const selected = item.id === line.itemId ? "selected" : "";
-      return `<option value="${item.id}" ${selected}>${escapeHtml(itemOptionLabel(item))}</option>`;
-    }).join("");
     return `
       <div class="line-card" data-index="${index}">
         <div class="line-item-field">
           <label>Item
-            <select class="line-item">${itemOptions}</select>
+            <span class="search-field"><svg class="icon"><use href="#icon-search"></use></svg><input class="line-item-search" type="search" placeholder="Search items" aria-label="Search item for line ${index + 1}"></span>
+            <select class="line-item" aria-label="Item for line ${index + 1}">${itemSelectOptions(line)}</select>
           </label>
           <p class="line-description">${escapeHtml(selectedItem?.description || "No description saved for this item")}</p>
         </div>
@@ -471,7 +500,7 @@ function renderLineItems() {
         <label>Price
           <input class="line-price" type="number" min="0" step="0.01" value="${line.price}">
         </label>
-        <button type="button" class="danger-button remove-line" title="Remove line" aria-label="Remove line">X</button>
+        <button type="button" class="danger-button remove-line" title="Remove line" aria-label="Remove line">&times;</button>
       </div>
     `;
   }).join("");
@@ -532,7 +561,12 @@ function renderDashboard() {
     return;
   }
 
-  list.innerHTML = [...state.documents].reverse().map((document) => {
+  const query = document.querySelector("#documentSearch").value;
+  const filteredDocuments = [...state.documents].reverse().filter((document) => {
+    const customer = getCustomer(document.customerId);
+    return searchMatches(query, document.number, document.type, document.date, document.status, customer?.name, customer?.company);
+  });
+  list.innerHTML = filteredDocuments.map((document) => {
     const customer = getCustomer(document.customerId);
     const totals = calculate(document);
     const label = documentLabel(document.type);
@@ -541,27 +575,34 @@ function renderDashboard() {
         <div class="card-row">
           <div>
             <div class="card-title">${label} ${escapeHtml(document.number)}</div>
-            <div class="card-meta">${escapeHtml(customer?.name || "No customer")} - ${document.date} - ${document.status}</div>
+            <div class="card-meta">${escapeHtml(customer?.name || "No customer")} - ${escapeHtml(document.date)} - ${escapeHtml(document.status)}</div>
           </div>
           <strong>${formatMoney(totals.total)}</strong>
         </div>
         <div class="card-actions">
-          <button class="secondary-button load-document" data-id="${document.id}">Open</button>
-          <button class="secondary-button duplicate-document" data-id="${document.id}">Duplicate</button>
-          <button class="danger-button delete-document" data-id="${document.id}">Delete</button>
+          <button class="secondary-button load-document" data-id="${escapeHtml(document.id)}">Open</button>
+          <button class="icon-button download-document" data-id="${escapeHtml(document.id)}" title="Download PDF" aria-label="Download ${label} PDF"><svg class="icon"><use href="#icon-download"></use></svg></button>
+          <button class="icon-button whatsapp-document" data-id="${escapeHtml(document.id)}" title="WhatsApp PDF" aria-label="Share ${label} PDF via WhatsApp"><svg class="icon"><use href="#icon-send"></use></svg></button>
+          <button class="icon-button email-document" data-id="${escapeHtml(document.id)}" title="Email PDF" aria-label="Share ${label} PDF via email"><svg class="icon"><use href="#icon-mail"></use></svg></button>
+          <button class="secondary-button duplicate-document" data-id="${escapeHtml(document.id)}">Duplicate</button>
+          <button class="danger-button delete-document" data-id="${escapeHtml(document.id)}">Delete</button>
         </div>
       </article>
     `;
-  }).join("");
+  }).join("") || `<div class="empty-state">No matching documents</div>`;
 }
 
 function renderCustomers() {
   const list = document.querySelector("#customerList");
   const count = document.querySelector("#customerCount");
+  const query = document.querySelector("#customerSearch").value;
+  const matching = state.customers.filter((customer) =>
+    searchMatches(query, customer.name, customer.company, customer.phone, customer.email, customer.address)
+  );
   if (count) {
-    count.textContent = `${state.customers.length} customers loaded`;
+    count.textContent = query ? `${matching.length} of ${state.customers.length}` : `${state.customers.length} customers`;
   }
-  list.innerHTML = state.customers.map((customer) => `
+  list.innerHTML = matching.map((customer) => `
     <article class="record-card">
       <div class="card-row">
         <div>
@@ -569,21 +610,24 @@ function renderCustomers() {
           <div class="card-meta">${escapeHtml(customer.company || customer.phone || customer.email || "")}</div>
         </div>
       </div>
-      <div class="card-meta">${escapeHtml(customer.address || "")}</div>
+      <div class="card-meta card-description">${escapeHtml(customer.address || "")}</div>
       <div class="card-actions">
-        <button class="danger-button delete-customer" data-id="${customer.id}">Delete</button>
+        <button class="danger-button delete-customer" data-id="${escapeHtml(customer.id)}">Delete</button>
       </div>
     </article>
-  `).join("") || `<div class="empty-state">No customers yet</div>`;
+  `).join("") || `<div class="empty-state">${query ? "No matching customers" : "No customers yet"}</div>`;
 }
 
 function renderItems() {
   const list = document.querySelector("#itemList");
   const count = document.querySelector("#itemCount");
+  const query = document.querySelector("#itemSearch").value;
+  const matching = state.items.filter((item) => searchMatches(query, item.name, item.description));
+  const visible = matching.slice(0, visibleItemCount);
   if (count) {
-    count.textContent = `${state.items.length} products loaded`;
+    count.textContent = query ? `${matching.length} of ${state.items.length}` : `${state.items.length} items`;
   }
-  list.innerHTML = state.items.map((item) => `
+  list.innerHTML = visible.map((item) => `
     <article class="record-card">
       <div class="card-row">
         <div>
@@ -592,12 +636,13 @@ function renderItems() {
         </div>
         <strong>${formatMoney(item.price)}</strong>
       </div>
-      <div class="card-meta">${escapeHtml(item.description || "")}</div>
+      <div class="card-meta card-description">${escapeHtml(item.description || "")}</div>
       <div class="card-actions">
-        <button class="danger-button delete-item" data-id="${item.id}">Delete</button>
+        <button class="danger-button delete-item" data-id="${escapeHtml(item.id)}">Delete</button>
       </div>
     </article>
-  `).join("") || `<div class="empty-state">No items yet</div>`;
+  `).join("") || `<div class="empty-state">${query ? "No matching items" : "No items yet"}</div>`;
+  document.querySelector("#showMoreItems").hidden = matching.length <= visibleItemCount;
 }
 
 function renderSettings() {
@@ -881,23 +926,28 @@ function loadImage(src) {
 }
 
 async function loadLogoForPdf() {
-  const image = await loadImage(state.settings.logoData || defaultLogo);
-  if (!image || !document.createElement) return null;
-  const canvas = document.createElement("canvas");
-  const maxWidth = 640;
-  const scale = Math.min(1, maxWidth / image.naturalWidth);
-  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-  const context = canvas.getContext("2d");
-  if (!context) return null;
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return {
-    width: canvas.width,
-    height: canvas.height,
-    bytes: dataUrlToBytes(canvas.toDataURL("image/jpeg", 0.88))
-  };
+  const source = state.settings.logoData || defaultLogo;
+  if (pdfLogoCache.source === source && pdfLogoCache.promise) return pdfLogoCache.promise;
+  const promise = (async () => {
+    const image = await loadImage(source);
+    if (!image || !document.createElement) return null;
+    const canvas = document.createElement("canvas");
+    const scale = Math.min(1, 640 / image.naturalWidth);
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return {
+      width: canvas.width,
+      height: canvas.height,
+      bytes: dataUrlToBytes(canvas.toDataURL("image/jpeg", 0.88))
+    };
+  })();
+  pdfLogoCache = { source, promise };
+  return promise;
 }
 
 function makePdfBlob(pageWidth, pageHeight, content, logoImage) {
@@ -1247,49 +1297,69 @@ function downloadFile(file) {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
-async function sharePdfCurrentDocument(channel = "share") {
-  const documentData = persistCurrentDocument();
-  if (!documentData) return;
-  renderAll();
-  const file = await createDocumentPdfFile(documentData);
-  const text = documentSummary(documentData);
-  if (navigator.canShare?.({ files: [file] }) && navigator.share) {
-    await navigator.share({ title: file.name, text, files: [file] });
+let noticeTimer;
+function showNotice(message) {
+  const notice = document.querySelector("#appNotice");
+  notice.textContent = message;
+  notice.hidden = false;
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => { notice.hidden = true; }, 10000);
+}
+
+async function sharePdfCurrentDocument(channel = "share", savedDocument = null) {
+  const documentData = savedDocument || persistCurrentDocument();
+  if (!documentData) {
+    showNotice("Add an item before sharing this document.");
     return;
   }
+  if (!savedDocument) renderAll();
+  const file = await createDocumentPdfFile(documentData);
+  if (navigator.share && navigator.canShare?.({ files: [file] })) {
+    try {
+      showNotice(channel === "email" ? "Choose Mail or Gmail to attach the PDF." : channel === "whatsapp" ? "Choose WhatsApp to send the PDF." : "Choose an app to share the PDF.");
+      // Some iPhone share targets discard the file when text is included.
+      await navigator.share({ files: [file] });
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+
   downloadFile(file);
-  if (channel === "whatsapp") {
-    window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\nPDF downloaded as ${file.name}`)}`, "_blank", "noopener");
+  if (channel === "email") {
+    const customer = getCustomer(documentData.customerId);
+    const subject = encodeURIComponent(`PRODAPT ${documentLabel(documentData.type)} ${documentData.number || "Draft"}`);
+    const body = encodeURIComponent(`${documentSummary(documentData)}\n\nPlease attach ${file.name} from Downloads before sending.\n\nRegards,\n${state.settings.businessName}`);
+    showNotice(`PDF downloaded. Attach ${file.name} to the email before sending.`);
+    window.location.href = `mailto:${encodeURIComponent(customer?.email || "")}?subject=${subject}&body=${body}`;
+  } else if (channel === "whatsapp") {
+    showNotice(`PDF downloaded. Open WhatsApp and attach ${file.name} from Downloads.`);
   } else {
-    alert(`PDF downloaded as ${file.name}. Use Share or attach it from Downloads.`);
+    showNotice(`PDF downloaded as ${file.name}. Attach it from Downloads to send it.`);
   }
 }
 
-async function emailCurrentDocument() {
-  const documentData = persistCurrentDocument();
-  if (!documentData) return;
-  renderAll();
-  const file = await createDocumentPdfFile(documentData);
-  downloadFile(file);
-  const customer = getCustomer(documentData.customerId);
-  const subject = encodeURIComponent(`PRODAPT ${documentLabel(documentData.type)} ${documentData.number || "Draft"}`);
-  const body = encodeURIComponent(`${documentSummary(documentData)}\n\nThe PDF file has downloaded as ${file.name}. Please attach it to this email.\n\nRegards,\n${state.settings.businessName}`);
-  window.location.href = `mailto:${encodeURIComponent(customer?.email || "")}?subject=${subject}&body=${body}`;
+function emailCurrentDocument(savedDocument = null) {
+  return sharePdfCurrentDocument("email", savedDocument);
 }
 
-function whatsappCurrentDocument() {
-  sharePdfCurrentDocument("whatsapp");
+function whatsappCurrentDocument(savedDocument = null) {
+  return sharePdfCurrentDocument("whatsapp", savedDocument);
 }
 
-async function downloadCurrentDocument() {
-  const documentData = persistCurrentDocument();
-  if (!documentData) return;
-  renderAll();
+async function downloadCurrentDocument(savedDocument = null) {
+  const documentData = savedDocument || persistCurrentDocument();
+  if (!documentData) {
+    showNotice("Add an item before downloading this document.");
+    return;
+  }
+  if (!savedDocument) renderAll();
   const file = await createDocumentPdfFile(documentData);
   downloadFile(file);
+  showNotice(`Downloaded ${file.name}.`);
 }
 
 async function printCurrentDocument() {
@@ -1325,7 +1395,12 @@ document.querySelector("#newDocumentFromDashboard").addEventListener("click", ()
   switchView("builder");
 });
 
-document.querySelector("#documentForm").addEventListener("input", () => {
+document.querySelector("#documentForm").addEventListener("input", (event) => {
+  if (event.target.id === "docCustomerSearch") {
+    fillSelects();
+    return;
+  }
+  if (event.target.classList.contains("line-item-search")) return;
   updateDraftFromForm();
   renderTotals();
 });
@@ -1344,6 +1419,12 @@ document.querySelector("#lineItems").addEventListener("input", (event) => {
   const card = event.target.closest(".line-card");
   if (!card) return;
   const index = Number(card.dataset.index);
+  if (event.target.classList.contains("line-item-search")) {
+    const select = card.querySelector(".line-item");
+    select.innerHTML = itemSelectOptions(draft.lines[index], event.target.value);
+    select.value = draft.lines[index].itemId;
+    return;
+  }
   draft.lines[index].itemId = card.querySelector(".line-item").value;
   draft.lines[index].quantity = moneyValue(card.querySelector(".line-qty").value);
   draft.lines[index].price = moneyValue(card.querySelector(".line-price").value);
@@ -1385,11 +1466,28 @@ document.querySelector("#clearDocument").addEventListener("click", () => {
 });
 
 document.querySelector("#documentList").addEventListener("click", (event) => {
-  const id = event.target.dataset.id;
-  if (!id) return;
-  if (event.target.classList.contains("load-document")) openDocument(id);
-  if (event.target.classList.contains("duplicate-document")) duplicateDocument(id);
-  if (event.target.classList.contains("delete-document")) deleteDocument(id);
+  const button = event.target.closest("button[data-id]");
+  if (!button) return;
+  const id = button.dataset.id;
+  const savedDocument = state.documents.find((document) => document.id === id);
+  if (!savedDocument) return;
+  if (button.classList.contains("load-document")) openDocument(id);
+  else if (button.classList.contains("duplicate-document")) duplicateDocument(id);
+  else if (button.classList.contains("delete-document")) deleteDocument(id);
+  else if (button.classList.contains("download-document")) downloadCurrentDocument(savedDocument);
+  else if (button.classList.contains("whatsapp-document")) whatsappCurrentDocument(savedDocument);
+  else if (button.classList.contains("email-document")) emailCurrentDocument(savedDocument);
+});
+
+document.querySelector("#documentSearch").addEventListener("input", renderDashboard);
+document.querySelector("#customerSearch").addEventListener("input", renderCustomers);
+document.querySelector("#itemSearch").addEventListener("input", () => {
+  visibleItemCount = 50;
+  renderItems();
+});
+document.querySelector("#showMoreItems").addEventListener("click", () => {
+  visibleItemCount += 50;
+  renderItems();
 });
 
 document.querySelector("#customerForm").addEventListener("submit", (event) => {
@@ -1478,6 +1576,7 @@ document.querySelector("#businessLogo").addEventListener("change", (event) => {
     state.settings.logoData = String(reader.result || "");
     saveState();
     renderAll();
+    loadLogoForPdf();
   });
   reader.readAsDataURL(file);
 });
@@ -1487,6 +1586,7 @@ document.querySelector("#removeLogo").addEventListener("click", () => {
   document.querySelector("#businessLogo").value = "";
   saveState();
   renderAll();
+  loadLogoForPdf();
 });
 
 document.querySelector("#printDocument").addEventListener("click", () => {
@@ -1504,8 +1604,8 @@ document.querySelector("#shareDocument").addEventListener("click", () => {
 document.querySelector("#sharePdfDocument").addEventListener("click", () => {
   sharePdfCurrentDocument("share");
 });
-document.querySelector("#emailDocument").addEventListener("click", emailCurrentDocument);
-document.querySelector("#whatsappDocument").addEventListener("click", whatsappCurrentDocument);
+document.querySelector("#emailDocument").addEventListener("click", () => emailCurrentDocument());
+document.querySelector("#whatsappDocument").addEventListener("click", () => whatsappCurrentDocument());
 
 if ("serviceWorker" in navigator) {
   let refreshing = false;
@@ -1514,9 +1614,10 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20260918-pdf-readability").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20261007-workspace").then((registration) => {
     registration.update();
   }).catch(() => {});
 }
 
 renderAll();
+loadLogoForPdf();

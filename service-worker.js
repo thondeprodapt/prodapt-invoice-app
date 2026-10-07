@@ -1,19 +1,18 @@
-const cacheName = "prodapt-invoice-studio-v21";
+const cacheName = "prodapt-invoice-studio-v22";
 const files = [
   "./",
   "./index.html",
   "./items-csv.html",
-  "./styles.css?v=20260918-pdf-readability",
-  "./app.js?v=20260918-pdf-readability",
-  "./customers-import.js?v=20260918-pdf-readability",
-  "./wave-items.js?v=20260918-pdf-readability",
+  "./styles.css?v=20261007-workspace",
+  "./app.js?v=20261007-workspace",
+  "./customers-import.js?v=20261007-workspace",
+  "./wave-items.js?v=20261007-workspace",
   "./wave-products-import.csv",
   "./prodapt-logo.png",
   "./icon-192.png",
   "./icon-512.png",
   "./apple-touch-icon.png",
-  "./manifest.json",
-  "./icon.svg"
+  "./manifest.json"
 ];
 
 self.addEventListener("install", (event) => {

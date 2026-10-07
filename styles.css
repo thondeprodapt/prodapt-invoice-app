@@ -391,7 +391,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+  box-shadow: 0 0 0 3px rgba(45, 99, 170, 0.13);
 }
 
 .form-row {
@@ -577,6 +577,45 @@ textarea:focus {
 
 .settings-form {
   max-width: 760px;
+}
+
+.sync-panel {
+  max-width: 760px;
+  margin-top: 14px;
+}
+
+.sync-panel p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.sync-panel p[data-tone="success"] {
+  color: #176b50;
+}
+
+.sync-panel p[data-tone="error"] {
+  color: #a63b33;
+}
+
+.sync-connect {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.sync-connect[hidden] {
+  display: none;
+}
+
+.sync-key-file {
+  grid-column: 1 / -1;
+}
+
+#copyPhoneLink[hidden] {
+  display: none;
 }
 
 .settings-form label,
@@ -1216,6 +1255,10 @@ textarea:focus {
   }
 
   .logo-field {
+    grid-template-columns: 1fr;
+  }
+
+  .sync-connect {
     grid-template-columns: 1fr;
   }
 

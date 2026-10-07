@@ -1,12 +1,14 @@
-const cacheName = "prodapt-invoice-studio-v22";
+const cacheName = "prodapt-invoice-studio-v23";
 const files = [
   "./",
   "./index.html",
   "./items-csv.html",
-  "./styles.css?v=20261007-workspace",
-  "./app.js?v=20261007-workspace",
-  "./customers-import.js?v=20261007-workspace",
-  "./wave-items.js?v=20261007-workspace",
+  "./styles.css?v=20261007-server-sync",
+  "./app.js?v=20261007-server-sync",
+  "./sync-core.js?v=20261007-server-sync",
+  "./sync.js?v=20261007-server-sync",
+  "./customers-import.js?v=20261007-server-sync",
+  "./wave-items.js?v=20261007-server-sync",
   "./wave-products-import.csv",
   "./prodapt-logo.png",
   "./icon-192.png",
@@ -33,6 +35,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  if (new URL(event.request.url).origin !== self.location.origin) return;
 
   if (event.request.mode === "navigate") {
     event.respondWith(

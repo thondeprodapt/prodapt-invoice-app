@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260903-app-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20260903-app-icon">
-    <link rel="stylesheet" href="styles.css?v=20261007-workspace">
+    <link rel="stylesheet" href="styles.css?v=20261007-server-sync">
   </head>
   <body>
     <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -282,6 +282,20 @@
             <label>Payment details<textarea id="businessPayment" rows="3"></textarea></label>
             <button class="primary-button" type="submit">Save settings</button>
           </form>
+          <section class="panel sync-panel" aria-labelledby="syncTitle">
+            <h2 id="syncTitle">Server sync</h2>
+            <p id="syncStatus" role="status">Checking connection</p>
+            <div class="sync-connect" id="syncConnectFields">
+              <label>Access key<input id="syncAccessKey" type="password" autocomplete="off" spellcheck="false"></label>
+              <button type="button" class="primary-button" id="connectSync">Connect this device</button>
+              <label class="sync-key-file">Or choose access key file<input id="syncAccessKeyFile" type="file" accept=".txt,text/plain"></label>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="secondary-button" id="syncNow">Sync now</button>
+              <button type="button" class="secondary-button" id="copyPhoneLink" hidden>Copy phone link</button>
+              <button type="button" class="secondary-button" id="downloadBackup"><svg class="icon"><use href="#icon-download"></use></svg>Download backup</button>
+            </div>
+          </section>
         </section>
       </main>
     </div>
@@ -290,8 +304,10 @@
 
     <section class="print-page" id="printPage" aria-hidden="true"></section>
 
-    <script src="customers-import.js?v=20261007-workspace"></script>
-    <script src="wave-items.js?v=20261007-workspace"></script>
-    <script src="app.js?v=20261007-workspace"></script>
+    <script src="customers-import.js?v=20261007-server-sync"></script>
+    <script src="wave-items.js?v=20261007-server-sync"></script>
+    <script src="app.js?v=20261007-server-sync"></script>
+    <script src="sync-core.js?v=20261007-server-sync"></script>
+    <script src="sync.js?v=20261007-server-sync"></script>
   </body>
 </html>

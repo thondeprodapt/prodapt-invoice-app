@@ -74,6 +74,7 @@ function normalizeState(saved) {
 
 function saveState() {
   localStorage.setItem(storageKey, JSON.stringify(state));
+  window.dispatchEvent(new Event("prodapt:state-saved"));
 }
 
 function applyBusinessDetailsMigration() {
@@ -695,9 +696,13 @@ function persistCurrentDocument() {
   return clone(draft);
 }
 
-function saveDocument() {
+async function saveDocument() {
   if (!persistCurrentDocument()) return;
   renderAll();
+  if (window.prodaptServerSync) {
+    const synced = await window.prodaptServerSync.flush();
+    showNotice(synced ? "Document saved on server." : "Document saved on this device; server sync is pending.");
+  }
 }
 
 function convertDraftToInvoice() {
@@ -1310,10 +1315,14 @@ function showNotice(message) {
 }
 
 async function sharePdfCurrentDocument(channel = "share", savedDocument = null) {
-  const documentData = savedDocument || persistCurrentDocument();
+  let documentData = savedDocument || persistCurrentDocument();
   if (!documentData) {
     showNotice("Add an item before sharing this document.");
     return;
+  }
+  if (window.prodaptServerSync) {
+    await window.prodaptServerSync.flush();
+    documentData = state.documents.find((entry) => entry.id === documentData.id) || documentData;
   }
   if (!savedDocument) renderAll();
   const file = await createDocumentPdfFile(documentData);
@@ -1351,10 +1360,14 @@ function whatsappCurrentDocument(savedDocument = null) {
 }
 
 async function downloadCurrentDocument(savedDocument = null) {
-  const documentData = savedDocument || persistCurrentDocument();
+  let documentData = savedDocument || persistCurrentDocument();
   if (!documentData) {
     showNotice("Add an item before downloading this document.");
     return;
+  }
+  if (window.prodaptServerSync) {
+    await window.prodaptServerSync.flush();
+    documentData = state.documents.find((entry) => entry.id === documentData.id) || documentData;
   }
   if (!savedDocument) renderAll();
   const file = await createDocumentPdfFile(documentData);
@@ -1363,8 +1376,12 @@ async function downloadCurrentDocument(savedDocument = null) {
 }
 
 async function printCurrentDocument() {
-  const documentData = persistCurrentDocument();
+  let documentData = persistCurrentDocument();
   if (!documentData) return;
+  if (window.prodaptServerSync) {
+    await window.prodaptServerSync.flush();
+    documentData = state.documents.find((entry) => entry.id === documentData.id) || documentData;
+  }
   renderAll();
   if (documentData.type !== "receipt") {
     const file = await createDocumentPdfFile(documentData);
@@ -1614,7 +1631,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20261007-workspace").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20261007-server-sync").then((registration) => {
     registration.update();
   }).catch(() => {});
 }

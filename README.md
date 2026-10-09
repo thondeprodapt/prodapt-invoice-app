@@ -12,3 +12,5 @@ For iPhone use:
 6. Tap Share PDF, then choose WhatsApp or Mail/Gmail from the iPhone share sheet. The PDF is attached as a file. Download PDF is also available.
 
 The app keeps a local copy on each device and syncs customers, items, documents and business settings with the private PRODAPT server. If the server is unavailable, local work stays on that device until it reconnects. Use Download backup in Settings regularly. The access key and server data must never be committed to GitHub.
+
+The Items list includes the 22 HP cartridges listed on the PRODAPT website. The app checks the public website for current USD prices when it opens and after returning to the foreground; the bundled prices remain available offline. Existing manually entered items and historical document amounts are not replaced by the website list.

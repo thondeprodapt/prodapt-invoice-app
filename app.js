@@ -43,6 +43,7 @@ let state = loadState();
 applyBusinessDetailsMigration();
 applyImportedCustomersMigration();
 applyWaveItemsMigration();
+applyWebsiteTonerSnapshot();
 let draft = emptyDocument();
 let visibleItemCount = 50;
 let pdfLogoCache = { source: null, promise: null };
@@ -259,6 +260,13 @@ function applyWaveItemsMigration() {
   }
 }
 
+function applyWebsiteTonerSnapshot() {
+  const catalog = window.ProdaptTonerCatalog;
+  if (!catalog) return;
+  const { added } = catalog.upsert(state.items, catalog.snapshot);
+  if (added) saveState();
+}
+
 function emptyDocument(type = "quote") {
   return {
     id: null,
@@ -470,7 +478,7 @@ function fillSelects() {
 function itemSelectOptions(line, query = "") {
   const matching = (query
     ? state.items.filter((item) => searchMatches(query, item.name, item.description))
-    : state.items).slice(0, query ? 60 : 40);
+    : state.items);
   const current = getItem(line.itemId);
   const options = current && !matching.some((item) => item.id === current.id)
     ? [current, ...matching]
@@ -645,6 +653,45 @@ function renderItems() {
   `).join("") || `<div class="empty-state">${query ? "No matching items" : "No items yet"}</div>`;
   document.querySelector("#showMoreItems").hidden = matching.length <= visibleItemCount;
 }
+
+let tonerRefreshPromise = null;
+let lastTonerRefresh = 0;
+let latestWebsiteToners = null;
+
+function applyLatestWebsiteToners() {
+  if (!latestWebsiteToners) return;
+  const { added, updated } = window.ProdaptTonerCatalog.upsert(state.items, latestWebsiteToners, true);
+  if (added || updated) {
+    saveState();
+    renderItems();
+  }
+}
+
+function refreshWebsiteToners() {
+  if (tonerRefreshPromise) return tonerRefreshPromise;
+  const catalog = window.ProdaptTonerCatalog;
+  const status = document.querySelector("#websitePricesStatus");
+  status.textContent = "Checking website toner prices";
+  tonerRefreshPromise = (async () => {
+    try {
+      const response = await fetch(catalog.apiUrl, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Website returned ${response.status}`);
+      const page = await response.json();
+      const products = catalog.parseWebsiteHtml(page.content?.rendered || "");
+      latestWebsiteToners = products;
+      applyLatestWebsiteToners();
+      lastTonerRefresh = Date.now();
+      status.textContent = `${products.length} website toner prices checked`;
+    } catch {
+      status.textContent = "Website prices unavailable; saved toner prices shown";
+    } finally {
+      tonerRefreshPromise = null;
+    }
+  })();
+  return tonerRefreshPromise;
+}
+
+window.addEventListener("prodapt:server-snapshot", applyLatestWebsiteToners);
 
 function renderSettings() {
   Object.entries(state.settings).forEach(([key, value]) => {
@@ -1631,10 +1678,15 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20261007-server-sync").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20261009-toner-catalog").then((registration) => {
     registration.update();
   }).catch(() => {});
 }
 
 renderAll();
 loadLogoForPdf();
+refreshWebsiteToners();
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && Date.now() - lastTonerRefresh > 5 * 60 * 1000) refreshWebsiteToners();
+});
+setInterval(() => refreshWebsiteToners(), 30 * 60 * 1000);

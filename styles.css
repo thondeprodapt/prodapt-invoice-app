@@ -590,6 +590,12 @@ textarea:focus {
   font-size: 0.9rem;
 }
 
+.catalog-status {
+  margin: 8px 0 12px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .sync-panel p[data-tone="success"] {
   color: #176b50;
 }

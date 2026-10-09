@@ -17,6 +17,7 @@
   }
 
   function itemKey(item) {
+    if (item.websiteSku) return `website:${String(item.websiteSku).toUpperCase()}`;
     return `${lower(item.name)}|${lower(item.description)}|${Number(item.price || 0).toFixed(2)}`;
   }
 

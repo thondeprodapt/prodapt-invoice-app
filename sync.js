@@ -95,6 +95,7 @@ function applyServerSnapshot(snapshot, generationAtStart, localAtStart) {
     renderAll();
   }
   if (generationAtStart !== syncGeneration) scheduleSync(0);
+  window.dispatchEvent(new Event("prodapt:server-snapshot"));
   setSyncStatus(`Synced at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`, "success");
 }
 

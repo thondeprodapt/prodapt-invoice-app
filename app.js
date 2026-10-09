@@ -634,7 +634,9 @@ function renderItems() {
   const matching = state.items.filter((item) => searchMatches(query, item.name, item.description));
   const visible = matching.slice(0, visibleItemCount);
   if (count) {
-    count.textContent = query ? `${matching.length} of ${state.items.length}` : `${state.items.length} items`;
+    count.textContent = query
+      ? `${visible.length} of ${matching.length} matches (${state.items.length} items)`
+      : `${visible.length} of ${state.items.length} items shown`;
   }
   list.innerHTML = visible.map((item) => `
     <article class="record-card">
@@ -651,7 +653,9 @@ function renderItems() {
       </div>
     </article>
   `).join("") || `<div class="empty-state">${query ? "No matching items" : "No items yet"}</div>`;
-  document.querySelector("#showMoreItems").hidden = matching.length <= visibleItemCount;
+  const showAll = document.querySelector("#showMoreItems");
+  showAll.hidden = matching.length <= visibleItemCount;
+  showAll.textContent = `Show all ${matching.length} items`;
 }
 
 let tonerRefreshPromise = null;
@@ -1550,7 +1554,7 @@ document.querySelector("#itemSearch").addEventListener("input", () => {
   renderItems();
 });
 document.querySelector("#showMoreItems").addEventListener("click", () => {
-  visibleItemCount += 50;
+  visibleItemCount = state.items.length;
   renderItems();
 });
 
@@ -1678,7 +1682,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20261009-toner-catalog").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20261009-show-all").then((registration) => {
     registration.update();
   }).catch(() => {});
 }

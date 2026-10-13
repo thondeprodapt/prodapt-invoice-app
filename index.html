@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260903-app-icon">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20260903-app-icon">
-    <link rel="stylesheet" href="styles.css?v=20261009-toner-catalog">
+    <link rel="stylesheet" href="styles.css?v=20261013-document-workflow">
   </head>
   <body>
     <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -48,9 +48,10 @@
       </header>
 
       <nav class="tabbar" aria-label="Main navigation">
-        <button class="tab active" data-view="dashboard"><svg class="icon"><use href="#icon-layout"></use></svg><span>Dashboard</span></button>
+        <button class="tab active" data-view="dashboard" aria-label="Dashboard"><svg class="icon"><use href="#icon-layout"></use></svg><span class="nav-full-label">Dashboard</span><span class="nav-short-label">Home</span></button>
         <button class="tab" data-view="builder"><svg class="icon"><use href="#icon-file"></use></svg><span>Create</span></button>
-        <button class="tab" data-view="customers"><svg class="icon"><use href="#icon-users"></use></svg><span>Customers</span></button>
+        <button class="tab" data-view="documents" aria-label="Documents"><svg class="icon"><use href="#icon-file"></use></svg><span class="nav-full-label">Documents</span><span class="nav-short-label">Docs</span></button>
+        <button class="tab" data-view="customers" aria-label="Customers"><svg class="icon"><use href="#icon-users"></use></svg><span class="nav-full-label">Customers</span><span class="nav-short-label">Clients</span></button>
         <button class="tab" data-view="items"><svg class="icon"><use href="#icon-box"></use></svg><span>Items</span></button>
         <button class="tab" data-view="settings"><svg class="icon"><use href="#icon-settings"></use></svg><span>Settings</span></button>
       </nav>
@@ -109,6 +110,28 @@
           <div class="document-list" id="documentList"></div>
         </section>
 
+        <section class="view" id="documentsView">
+          <div class="section-heading">
+            <h2>Documents</h2>
+            <div class="form-actions">
+              <select id="newDocumentType" aria-label="New document type">
+                <option value="quote">Quotation</option>
+                <option value="invoice">Invoice</option>
+                <option value="receipt">Receipt</option>
+              </select>
+              <button type="button" class="primary-button" id="newDocumentFromRecords"><svg class="icon"><use href="#icon-plus"></use></svg>New</button>
+            </div>
+          </div>
+          <div class="document-filters" role="group" aria-label="Document type">
+            <button type="button" class="secondary-button" data-document-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="secondary-button" data-document-filter="quote" aria-pressed="false">Quotations</button>
+            <button type="button" class="secondary-button" data-document-filter="invoice" aria-pressed="false">Invoices</button>
+            <button type="button" class="secondary-button" data-document-filter="receipt" aria-pressed="false">Receipts</button>
+          </div>
+          <label class="search-field"><svg class="icon"><use href="#icon-search"></use></svg><input type="search" id="recordDocumentSearch" placeholder="Search number, customer or status" aria-label="Search saved documents"></label>
+          <div class="document-list" id="documentRecordList"></div>
+        </section>
+
         <section class="view" id="builderView">
           <div class="builder-grid">
             <form class="panel" id="documentForm">
@@ -125,6 +148,10 @@
                   Date
                   <input type="date" id="docDate">
                 </label>
+              </div>
+
+              <div class="form-row" id="quoteExpiryRow">
+                <label>Quotation expires on<input type="date" id="docExpiry"></label>
               </div>
 
               <div class="form-row">
@@ -182,6 +209,14 @@
                 <button type="submit" class="primary-button">Save document</button>
                 <button type="button" class="secondary-button" id="convertToInvoice">Convert</button>
                 <button type="button" class="danger-button" id="clearDocument">Clear</button>
+              </div>
+              <div class="saved-document-actions" id="savedDocumentActions" hidden>
+                <p id="savedDocumentStatus" role="status"></p>
+                <div class="form-actions">
+                  <button type="button" class="secondary-button" data-new-document="quote"><svg class="icon"><use href="#icon-plus"></use></svg>New quotation</button>
+                  <button type="button" class="secondary-button" data-new-document="invoice"><svg class="icon"><use href="#icon-plus"></use></svg>New invoice</button>
+                  <button type="button" class="secondary-button" data-new-document="receipt"><svg class="icon"><use href="#icon-plus"></use></svg>New receipt</button>
+                </div>
               </div>
             </form>
 
@@ -308,7 +343,7 @@
     <script src="customers-import.js?v=20261009-toner-catalog"></script>
     <script src="wave-items.js?v=20261009-toner-catalog"></script>
     <script src="toner-catalog.js?v=20261009-toner-catalog"></script>
-    <script src="app.js?v=20261009-show-all"></script>
+    <script src="app.js?v=20261013-document-workflow"></script>
     <script src="sync-core.js?v=20261009-toner-catalog"></script>
     <script src="sync.js?v=20261009-toner-catalog"></script>
   </body>

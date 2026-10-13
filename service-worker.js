@@ -1,10 +1,10 @@
-const cacheName = "prodapt-invoice-studio-v25";
+const cacheName = "prodapt-invoice-studio-v26";
 const files = [
   "./",
   "./index.html",
   "./items-csv.html",
-  "./styles.css?v=20261009-toner-catalog",
-  "./app.js?v=20261009-show-all",
+  "./styles.css?v=20261013-document-workflow",
+  "./app.js?v=20261013-document-workflow",
   "./sync-core.js?v=20261009-toner-catalog",
   "./sync.js?v=20261009-toner-catalog",
   "./customers-import.js?v=20261009-toner-catalog",

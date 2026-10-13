@@ -193,6 +193,30 @@ h2 {
   color: var(--brand-dark);
 }
 
+.nav-short-label { display: none; }
+
+.document-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.document-filters [aria-pressed="true"] {
+  background: #eaf1fb;
+  color: var(--brand-dark);
+  border-color: var(--brand);
+}
+
+.saved-document-actions {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.saved-document-actions p { margin: 0 0 10px; }
+.saved-document-actions[hidden], #quoteExpiryRow[hidden] { display: none; }
+
 main {
   grid-column: 2;
   grid-row: 2;
@@ -1186,7 +1210,7 @@ textarea:focus {
     left: 0;
     z-index: 20;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 2px;
     min-height: 0;
     margin: 0;
@@ -1213,6 +1237,9 @@ textarea:focus {
     width: 20px;
     height: 20px;
   }
+
+  .nav-full-label { display: none; }
+  .nav-short-label { display: inline; }
 
   .tab.active {
     border: 0;

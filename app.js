@@ -46,6 +46,7 @@ applyWaveItemsMigration();
 applyWebsiteTonerSnapshot();
 let draft = emptyDocument();
 let visibleItemCount = 50;
+let documentFilter = "all";
 let pdfLogoCache = { source: null, promise: null };
 
 function loadState() {
@@ -273,6 +274,7 @@ function emptyDocument(type = "quote") {
     type,
     number: "",
     date: today(),
+    expiresOn: "",
     customerId: state?.customers?.[0]?.id || "",
     lines: [{ itemId: state?.items?.[0]?.id || "", quantity: 1, price: state?.items?.[0]?.price || 0 }],
     discount: 0,
@@ -519,14 +521,29 @@ function renderDocumentForm() {
   fillSelects();
   document.querySelector("#docType").value = draft.type;
   document.querySelector("#docDate").value = draft.date;
+  document.querySelector("#docExpiry").value = draft.expiresOn || "";
+  renderQuotationExpiry();
   document.querySelector("#docCustomer").value = draft.customerId;
   document.querySelector("#docDiscount").value = draft.discount;
   document.querySelector("#docDiscountType").value = draft.discountType;
   document.querySelector("#docTax").value = draft.tax;
   document.querySelector("#docStatus").value = draft.status;
   document.querySelector("#docNotes").value = draft.notes;
+  const saved = state.documents.find((entry) => entry.id === draft.id);
+  document.querySelector("#savedDocumentActions").hidden = !saved;
+  document.querySelector("#savedDocumentStatus").textContent = saved ? `${documentLabel(saved.type)} ${saved.number} saved` : "";
   renderLineItems();
   renderTotals();
+}
+
+function renderQuotationExpiry() {
+  const expiry = document.querySelector("#docExpiry");
+  document.querySelector("#quoteExpiryRow").hidden = draft.type !== "quote";
+  expiry.disabled = draft.type !== "quote";
+  expiry.min = draft.date || "";
+  expiry.setCustomValidity(draft.type === "quote" && draft.expiresOn && draft.date && draft.expiresOn < draft.date
+    ? "Choose an expiry date on or after the quotation date."
+    : "");
 }
 
 function renderTotals() {
@@ -564,16 +581,24 @@ function renderDashboard() {
   document.querySelector("#metricProgress").textContent = `${progress.toFixed(0)}% collected - ${formatMoney(quoted)} quoted`;
   document.querySelector("#progressFill").style.width = `${progress}%`;
 
-  const list = document.querySelector("#documentList");
+  renderDocumentCards("#documentList", document.querySelector("#documentSearch").value);
+}
+
+function renderDocumentRecords() {
+  renderDocumentCards("#documentRecordList", document.querySelector("#recordDocumentSearch").value, documentFilter);
+}
+
+function renderDocumentCards(selector, query, type = "all") {
+  const list = document.querySelector(selector);
   if (!state.documents.length) {
     list.innerHTML = `<div class="empty-state">No documents yet</div>`;
     return;
   }
 
-  const query = document.querySelector("#documentSearch").value;
   const filteredDocuments = [...state.documents].reverse().filter((document) => {
     const customer = getCustomer(document.customerId);
-    return searchMatches(query, document.number, document.type, document.date, document.status, customer?.name, customer?.company);
+    return (type === "all" || document.type === type)
+      && searchMatches(query, document.number, document.type, document.date, document.status, customer?.name, customer?.company);
   });
   list.innerHTML = filteredDocuments.map((document) => {
     const customer = getCustomer(document.customerId);
@@ -715,6 +740,7 @@ function renderSettings() {
 function renderAll() {
   renderDocumentForm();
   renderDashboard();
+  renderDocumentRecords();
   renderCustomers();
   renderItems();
   renderSettings();
@@ -723,6 +749,8 @@ function renderAll() {
 function updateDraftFromForm() {
   draft.type = document.querySelector("#docType").value;
   draft.date = document.querySelector("#docDate").value;
+  draft.expiresOn = document.querySelector("#docExpiry").value;
+  renderQuotationExpiry();
   draft.customerId = document.querySelector("#docCustomer").value;
   draft.discount = moneyValue(document.querySelector("#docDiscount").value);
   draft.discountType = document.querySelector("#docDiscountType").value;
@@ -733,6 +761,7 @@ function updateDraftFromForm() {
 
 function persistCurrentDocument() {
   updateDraftFromForm();
+  if (!document.querySelector("#docExpiry").reportValidity()) return null;
   if (!draft.lines.length) return null;
   if (!draft.number) draft.number = nextDocumentNumber(draft.type);
   if (!draft.id) {
@@ -753,7 +782,14 @@ async function saveDocument() {
   if (window.prodaptServerSync) {
     const synced = await window.prodaptServerSync.flush();
     showNotice(synced ? "Document saved on server." : "Document saved on this device; server sync is pending.");
-  }
+  } else showNotice("Document saved on this device.");
+}
+
+function startNewDocument(type = "quote") {
+  draft = emptyDocument(type);
+  document.querySelector("#docCustomerSearch").value = "";
+  renderAll();
+  switchView("builder");
 }
 
 function convertDraftToInvoice() {
@@ -855,7 +891,9 @@ function renderPrintPage(documentData) {
         <div class="invoice-meta-card">
           <div><strong>${label} Number:</strong><span>${escapeHtml(documentData.number || "Draft")}</span></div>
           <div><strong>${label} Date:</strong><span>${escapeHtml(documentData.date)}</span></div>
-          <div><strong>Payment Due:</strong><span>${escapeHtml(documentData.date)}</span></div>
+          ${documentData.type === "quote"
+            ? (documentData.expiresOn ? `<div><strong>Expires on:</strong><span>${escapeHtml(documentData.expiresOn)}</span></div>` : "")
+            : `<div><strong>Payment Due:</strong><span>${escapeHtml(documentData.date)}</span></div>`}
           <div class="amount-due"><strong>${amountLabel} (${currencyLabel()}):</strong><span>${formatMoney(totals.total)}</span></div>
         </div>
       </section>
@@ -1149,9 +1187,11 @@ async function generateDocumentPdfBlob(documentData) {
 
     const metaRows = [
       [`${label} Number:`, documentData.number || "Draft", true],
-      [`${label} Date:`, documentData.date, false],
-      ["Payment Due:", documentData.date, false]
+      [`${label} Date:`, documentData.date, false]
     ];
+    if (documentData.type === "quote") {
+      if (documentData.expiresOn) metaRows.push(["Expires on:", documentData.expiresOn, false]);
+    } else metaRows.push(["Payment Due:", documentData.date, false]);
     metaRows.forEach(([name, value, bold], index) => {
       const rowY = 616 - (index * 18);
       rightText(name, metaLeft + 118, rowY, 10, Boolean(bold));
@@ -1458,9 +1498,24 @@ document.querySelectorAll(".tab").forEach((tab) => {
 });
 
 document.querySelector("#newDocumentFromDashboard").addEventListener("click", () => {
-  draft = emptyDocument();
-  renderAll();
-  switchView("builder");
+  startNewDocument();
+});
+
+document.querySelector("#newDocumentFromRecords").addEventListener("click", () => {
+  startNewDocument(document.querySelector("#newDocumentType").value);
+});
+document.querySelectorAll("[data-new-document]").forEach((button) => {
+  button.addEventListener("click", () => startNewDocument(button.dataset.newDocument));
+});
+document.querySelectorAll("[data-document-filter]").forEach((button) => {
+  button.addEventListener("click", () => {
+    documentFilter = button.dataset.documentFilter;
+    document.querySelectorAll("[data-document-filter]").forEach((filter) => {
+      filter.setAttribute("aria-pressed", String(filter.dataset.documentFilter === documentFilter));
+    });
+    if (documentFilter !== "all") document.querySelector("#newDocumentType").value = documentFilter;
+    renderDocumentRecords();
+  });
 });
 
 document.querySelector("#documentForm").addEventListener("input", (event) => {
@@ -1533,7 +1588,7 @@ document.querySelector("#clearDocument").addEventListener("click", () => {
   renderAll();
 });
 
-document.querySelector("#documentList").addEventListener("click", (event) => {
+function handleDocumentListClick(event) {
   const button = event.target.closest("button[data-id]");
   if (!button) return;
   const id = button.dataset.id;
@@ -1545,9 +1600,12 @@ document.querySelector("#documentList").addEventListener("click", (event) => {
   else if (button.classList.contains("download-document")) downloadCurrentDocument(savedDocument);
   else if (button.classList.contains("whatsapp-document")) whatsappCurrentDocument(savedDocument);
   else if (button.classList.contains("email-document")) emailCurrentDocument(savedDocument);
-});
+}
+document.querySelector("#documentList").addEventListener("click", handleDocumentListClick);
+document.querySelector("#documentRecordList").addEventListener("click", handleDocumentListClick);
 
 document.querySelector("#documentSearch").addEventListener("input", renderDashboard);
+document.querySelector("#recordDocumentSearch").addEventListener("input", renderDocumentRecords);
 document.querySelector("#customerSearch").addEventListener("input", renderCustomers);
 document.querySelector("#itemSearch").addEventListener("input", () => {
   visibleItemCount = 50;
@@ -1682,7 +1740,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("service-worker.js?v=20261009-show-all").then((registration) => {
+  navigator.serviceWorker.register("service-worker.js?v=20261013-document-workflow").then((registration) => {
     registration.update();
   }).catch(() => {});
 }
